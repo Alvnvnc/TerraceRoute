@@ -101,7 +101,7 @@ Dockerfile      multi-stage, tanpa GPU, model menyatu di image (~1,8 GB terkompr
 requirements.txt
 scripts/build_and_push.sh   build linux/amd64 + push ke registry publik
 eval/           harness evaluasi yang reprodusibel (lihat di bawah)
-docs/           strategi, laporan evaluasi, matematika keputusan, log submission, aturan
+docs/           escalation-math.md — seluruh desain dalam satu dokumen (matematika keputusan, ladder, hasil terukur)
 ```
 
 ## Menjalankan
@@ -135,14 +135,20 @@ image `linux/amd64` publik dengan `REGISTRY=ghcr.io/<user> ./scripts/build_and_p
 independen gemma-3-12B):
 
 ```bash
-python -m eval.gen_tasks_v4                       # regenerasi eval/tasks_v4.jsonl (66 tugas)
-OLLAMA_HOST=<host> python -m eval.agent_eval      # jalankan solver produksi, laporan per kategori
-python -m eval.escalation_math                    # model keputusan eskalasi Monte-Carlo
+python -m eval.gen_tasks_v5                        # regenerasi eval/tasks_v5.jsonl (124 tugas, ~16/kategori)
+python -m eval.validate_tasks --tasks eval/tasks_v5.jsonl   # tanpa-LLM: buktikan set well-formed
+OLLAMA_HOST=<host> python -m eval.agent_eval --tasks eval/tasks_v5.jsonl   # jalankan solver produksi
+python -m eval.escalation_math --results eval/agent_eval_results.jsonl     # hitung ulang ladder dari data
 ```
 
-Diukur pada mesin evaluasi AMD Radeon: **akurasi zero-API ≈ 0,85–0,91**, level-2 ≈ 0,91 dengan
-~1,1–1,4 ribu token remote atas 66 tugas. Laporan lengkap:
-[`docs/findings-v4.md`](docs/findings-v4.md).
+`validate_tasks` menjalankan solusi referensi tiap tugas kode terhadap assert-nya sendiri, jadi test
+yang salah ketik tak bisa diam-diam membiaskan estimasi akurasi. `escalation_math --results` menghitung
+ulang seluruh ladder kebijakan dari run *terukur* (tanpa flag → pakai angka v4 bawaan). Set v5 yang lebih
+besar dibuat karena v4 (66 tugas) terlalu kecil untuk mengestimasi rate per-kategori secara andal.
+
+Diukur pada mesin evaluasi AMD Radeon (v4): **akurasi zero-API ≈ 0,85–0,91**, level-2 ≈ 0,91 dengan
+~1,1–1,4 ribu token remote atas 66 tugas. Hasil terukur lengkap ada di
+[`docs/escalation-math.md`](docs/escalation-math.md) §11.
 
 ## Protokol Submission / Papan Peringkat
 
@@ -154,12 +160,10 @@ mencari **rung terendah yang masih lolos**:
 2. Gagal → lompat ke **level 3** (probabilitas lolos tinggi, token moderat); lalu turun
    bertahap ke rung termurah yang masih lolos dan bekukan di sana.
 
-Catatan berjalan ada di [`docs/submissions-log.md`](docs/submissions-log.md).
+Protokol probing lengkap ada di [`docs/escalation-math.md`](docs/escalation-math.md) §8.
 
-## Indeks Dokumen
+## Dokumen
 
-- [`docs/escalation-math.md`](docs/escalation-math.md) — teori keputusan di balik urutan rung
-- [`docs/findings-v4.md`](docs/findings-v4.md) — hasil evaluasi dan analisis kesalahan
-- [`docs/plan-v2.md`](docs/plan-v2.md) — strategi lengkap dan verifikasi aturan
-- [`docs/submissions-log.md`](docs/submissions-log.md) — log kalibrasi papan peringkat
-- [`docs/participant-guide.pdf`](docs/participant-guide.pdf) — aturan resmi
+- [`docs/escalation-math.md`](docs/escalation-math.md) — seluruh desain dalam satu dokumen: teori
+  keputusan eskalasi, urutan rung berbasis data, protokol probing papan peringkat, dan hasil
+  evaluasi terukur (§11). Berbahasa Inggris.

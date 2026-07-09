@@ -95,7 +95,7 @@ Dockerfile      multi-stage, CPU-only, self-contained model (~1.8 GB compressed)
 requirements.txt
 scripts/build_and_push.sh   build linux/amd64 + push to a public registry
 eval/           reproducible evaluation harness (see below)
-docs/           strategy, evaluation write-ups, decision math, submission log, rules
+docs/           escalation-math.md — the design in one doc (decision math, ladder, measured results)
 ```
 
 ## Running
@@ -129,13 +129,20 @@ public `linux/amd64` image with `REGISTRY=ghcr.io/<user> ./scripts/build_and_pus
 independent gemma-3-12B judge):
 
 ```bash
-python -m eval.gen_tasks_v4                       # regenerate eval/tasks_v4.jsonl (66 tasks)
-OLLAMA_HOST=<host> python -m eval.agent_eval      # run the production solver, report per category
-python -m eval.escalation_math                    # Monte-Carlo escalation decision model
+python -m eval.gen_tasks_v5                        # regenerate eval/tasks_v5.jsonl (124 tasks, ~16/cat)
+python -m eval.validate_tasks --tasks eval/tasks_v5.jsonl   # LLM-free: prove the set is well-formed
+OLLAMA_HOST=<host> python -m eval.agent_eval --tasks eval/tasks_v5.jsonl   # run the production solver
+python -m eval.escalation_math --results eval/agent_eval_results.jsonl     # recompute the ladder from data
 ```
 
-Measured on an AMD Radeon eval rig: **zero-API accuracy ≈ 0.85–0.91**, level-2 ≈ 0.91 with
-~1.1–1.4k remote tokens over 66 tasks. Full write-up: [`docs/findings-v4.md`](docs/findings-v4.md).
+`validate_tasks` runs every code task's reference solution against its own asserts, so a mistyped
+test can never silently bias the accuracy estimate. `escalation_math --results` recomputes the whole
+policy ladder from a *measured* run (falling back to the baked-in v4 numbers with no flag). The larger
+v5 set exists because v4 (66 tasks) was too small to estimate the per-category rates reliably.
+
+Measured on an AMD Radeon eval rig (v4): **zero-API accuracy ≈ 0.85–0.91**, level-2 ≈ 0.91 with
+~1.1–1.4k remote tokens over 66 tasks. Full measured results are in
+[`docs/escalation-math.md`](docs/escalation-math.md) §11.
 
 ## Submission / leaderboard protocol
 
@@ -147,12 +154,10 @@ still passes**:
 2. Fails → jump to **level 3** (high pass probability, moderate tokens); then walk *down*
    to the cheapest rung that still passes and freeze there.
 
-The running log lives in [`docs/submissions-log.md`](docs/submissions-log.md).
+The full probing protocol is in [`docs/escalation-math.md`](docs/escalation-math.md) §8.
 
-## Docs index
+## Docs
 
-- [`docs/escalation-math.md`](docs/escalation-math.md) — decision theory behind the rung order
-- [`docs/findings-v4.md`](docs/findings-v4.md) — evaluation results and error analysis
-- [`docs/plan-v2.md`](docs/plan-v2.md) — full strategy and rules verification
-- [`docs/submissions-log.md`](docs/submissions-log.md) — leaderboard calibration log
-- [`docs/participant-guide.pdf`](docs/participant-guide.pdf) — official rules
+- [`docs/escalation-math.md`](docs/escalation-math.md) — the design in one document: the escalation
+  decision theory, the data-driven rung order, the leaderboard probing protocol, and the measured
+  evaluation results (§11).

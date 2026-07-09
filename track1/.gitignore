@@ -1,0 +1,2 @@
+# Streamlit runtime secrets — NEVER commit (the .example is fine to commit).
+.streamlit/secrets.toml

@@ -31,14 +31,24 @@ _RE_MATH = re.compile(r"\d.*[-+*/%]|\bhow many\b|\bpercent|\b%|\bsum\b|\baverage
 _RE_SENTIMENT = re.compile(r"\bsentiment\b|\bpositive or negative\b|\bclassify (the )?(sentiment|review|tone)\b", re.I)
 _RE_SUMMARY = re.compile(r"\bsummari[sz]e\b|\bsummary\b|\bin (one|two|\d+) sentences?\b|\bcondense\b|\btl;?dr\b", re.I)
 _RE_NER = re.compile(r"\bnamed entit|\bextract .*(entit|people|person|organi|location|date)|\bidentify .*(entit|name)", re.I)
-_RE_LOGIC = re.compile(r"\bwho owns\b|\bwho is\b.*\?|\bif .* then\b|\beach (own|has)\b|\bpuzzle\b|"
+_RE_LOGIC = re.compile(r"\bwho owns\b|\bwho is\b.*\?|\bif .* then\b|\beach (?:\w+ )?(?:has|owns?|is|gets)\b|\bpuzzle\b|"
                        r"\bdeduc|\blogical|\bknights? and knaves\b|\bwho (killed|committed)\b|"
                        # Common riddle/trap markers (eval v4 finding: these often leak into
                        # math/factual but need the trap path): "all but", "are left",
                        # relative dates, syllogisms.
                        r"\ball but\b|\b(?:are|is) left\b|\bnobody (?:leaves|left)\b|"
                        r"\bwhat day\b|\bdays? (?:after|before|from) (?:tomorrow|yesterday|today)\b|"
-                       r"\bcan (?:we|you) (?:logically )?conclude\b|\balways (?:tell|lie)|\btruth-?teller", re.I)
+                       r"\bcan (?:we|you) (?:logically )?conclude\b|\balways (?:tell|lie)|\btruth-?teller|"
+                       # Syllogism / deductive inference ("All X are/have Y. ... Does it follow?").
+                       # NB "all integers from"/"all numbers from" (math) is NOT matched — the
+                       # premise verb (are/have/can) must directly follow the noun.
+                       r"\ball [a-z]+ (?:are|have|can)\b|\bdoes it follow\b|\bare all\b|"
+                       # Comparison / ordering puzzles.
+                       r"\b(?:heavier|lighter|taller|shorter|older|younger|faster|slower|stronger|weaker) than\b|"
+                       # Race-position and family-relation riddles (relational, not arithmetic).
+                       r"\bovertake\b|\bwhat (?:position|place)\b|"
+                       r"\bhow many (?:brothers?|sisters?|sons?|daughters?)\b|"
+                       r"\b(?:first|second|third|fourth|fifth|last) (?:daughter|son|child)\b", re.I)
 _RE_FACT = re.compile(r"\bwhat is\b|\bwho (is|was|were)\b|\bwhen (did|was)\b|\bwhere (is|was)\b|"
                       r"\bexplain\b|\bdefine\b|\bhow (does|do) \b", re.I)
 

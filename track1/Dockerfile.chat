@@ -1,0 +1,31 @@
+# TerraceRoute Chat — light Fireworks-only demo UI (Streamlit).
+#
+# No local model / no llama-cpp: the chatbot routes straight to Fireworks (the API key is
+# injected at RUNTIME via Streamlit secrets or env — never baked in). Small image, fast to
+# build & deploy, and it needs no local GPU/CPU model to be usable.
+#
+# The scored *batch* agent is a SEPARATE image (track1/Dockerfile) and is untouched.
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+WORKDIR /app
+
+COPY requirements-chat.txt /tmp/req.txt
+RUN pip install --no-cache-dir -r /tmp/req.txt
+
+COPY agent/ /app/agent/
+COPY chat_app.py /app/chat_app.py
+COPY .streamlit/ /app/.streamlit/
+COPY entrypoint.sh /app/entrypoint.sh
+# Safety: never ship a real secrets file even if one slipped into the build context.
+RUN chmod +x /app/entrypoint.sh && rm -f /app/.streamlit/secrets.toml
+
+EXPOSE 8501
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')" || exit 1
+
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -1,5 +1,5 @@
 # TerraceRoute Track-1 agent — CPU-only, targets the 4 GB RAM / 2 vCPU scoring env.
-# Batch: read /input/tasks.json → write /output/results.json. See docs/plan-v2.md.
+# Batch: read /input/tasks.json → write /output/results.json. See docs/escalation-math.md.
 #
 # Multi-stage: the builder compiles llama-cpp-python from source for glibc (the prebuilt
 # "cpu" wheel is musl-linked → won't run on the slim/glibc image); the runtime stays lean.

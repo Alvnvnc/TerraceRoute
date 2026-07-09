@@ -1,0 +1,14 @@
+# Keep the build context lean AND keep secrets out of it entirely.
+.git/
+.env
+.env.*
+.streamlit/secrets.toml
+**/__pycache__/
+*.pyc
+*.gguf
+models/
+eval/
+docs/
+scripts/
+*.md
+Dockerfile

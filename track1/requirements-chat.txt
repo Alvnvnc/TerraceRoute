@@ -1,0 +1,4 @@
+# TerraceRoute Chat — light demo UI (Fireworks-only, no local model).
+# The agent package itself uses only the stdlib (urllib/ast/re), so Streamlit is the
+# only extra dependency. No llama-cpp / numpy / huggingface_hub here.
+streamlit>=1.38,<2

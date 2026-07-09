@@ -1,0 +1,9 @@
+# Phase 0/1 core is standard-library only (urllib, json, subprocess, dataclasses)
+# — no third-party dependencies, so it runs anywhere Python 3.10+ is present.
+#
+# Phase 2/3 (the local-LLM front-end and two-model safety gate) talk to Ollama
+# over its plain HTTP API, also via urllib — still no required packages.
+#
+# External runtime tools (installed separately, not pip):
+#   - cloudflared >= 2026.3.0
+#   - ollama      >= 0.20   (for Phase 2+)
