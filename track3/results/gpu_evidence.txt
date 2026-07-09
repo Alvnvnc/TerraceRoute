@@ -1,0 +1,19 @@
+AMD GPU evidence — captured on the Radeon instance (ROCm), 2026-07-10.
+The two local model families are resident on the GPU while the agent reasons;
+credentials never leave the machine.
+
+=== ollama ps (two families resident, both 100% GPU) ===
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL
+qwen2.5:3b-instruct    357c53fb659c    3.4 GB    100% GPU     32768      (verifier)
+gemma3:12b             f4031aab637d    8.0 GB    100% GPU     4096       (planner)
+
+=== rocm-smi ===
+GPU[0] : Card SKU:               D7070910
+GPU[0] : GFX Version:            gfx1100
+GPU[0] : GPU use (%):            79        (during dual-model inference)
+GPU[0] : VRAM Total Used Memory: 13.74 GB  (both models + KV cache)
+
+Notes:
+- gfx1100 is native for Ollama/ROCm — no HSA_OVERRIDE_GFX_VERSION needed.
+- Planner throughput measured 57 tok/s (gemma3:12b), verifier ~150 tok/s (qwen2.5:3b).
+- Both models pinned during the eval run; combined footprint ~13.7 GB of ~48 GB VRAM.

@@ -1,0 +1,34 @@
+{"id": "en-expose-1", "text": "Expose my Jellyfin on media.example.com, it's on port 8096", "op": "expose", "hostname": "media.example.com", "port": 8096, "service_scheme": "http"}
+{"id": "en-expose-2", "text": "Please publish my blog at blog.example.com running on 2368", "op": "expose", "hostname": "blog.example.com", "port": 2368, "service_scheme": "http"}
+{"id": "en-expose-3", "text": "Make grafana reachable at stats.example.com, port 3000, use https to the origin", "op": "expose", "hostname": "stats.example.com", "port": 3000, "service_scheme": "https"}
+{"id": "id-expose-1", "text": "tolong buka jellyfin saya di media.example.com port 8096", "op": "expose", "hostname": "media.example.com", "port": 8096, "service_scheme": "http"}
+{"id": "id-expose-2", "text": "expose nextcloud di cloud.example.com yang jalan di port 8080", "op": "expose", "hostname": "cloud.example.com", "port": 8080, "service_scheme": "http"}
+{"id": "id-expose-3", "text": "aku mau paparkan portainer di panel.example.com lewat https port 9443", "op": "expose", "hostname": "panel.example.com", "port": 9443, "service_scheme": "https"}
+{"id": "mix-expose-1", "text": "publish home assistant ke ha.example.com, portnya 8123 ya", "op": "expose", "hostname": "ha.example.com", "port": 8123, "service_scheme": "http"}
+{"id": "mix-expose-2", "text": "bikin gitea saya online di git.example.com port 3000", "op": "expose", "hostname": "git.example.com", "port": 3000, "service_scheme": "http"}
+{"id": "en-status-1", "text": "is media.example.com up right now?", "op": "status", "hostname": "media.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-status-2", "text": "check whether blog.example.com is reachable", "op": "status", "hostname": "blog.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-status-1", "text": "cek apakah stats.example.com masih hidup", "op": "status", "hostname": "stats.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-status-2", "text": "app.example.com statusnya gimana sekarang?", "op": "status", "hostname": "app.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-status-3", "text": "show me the state of the git.example.com tunnel", "op": "status", "hostname": "git.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-diagnose-1", "text": "why does app.example.com keep returning errors?", "op": "diagnose", "hostname": "app.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-diagnose-2", "text": "figure out what's wrong with media.example.com, it's throwing 502s", "op": "diagnose", "hostname": "media.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-diagnose-1", "text": "kenapa app.example.com error terus?", "op": "diagnose", "hostname": "app.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-diagnose-2", "text": "tolong selidiki kenapa cloud.example.com tidak bisa diakses", "op": "diagnose", "hostname": "cloud.example.com", "port": 0, "service_scheme": "http"}
+{"id": "mix-diagnose-1", "text": "debug dong kenapa panel.example.com kena bad gateway", "op": "diagnose", "hostname": "panel.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-heal-1", "text": "the tunnel for git.example.com died, bring it back", "op": "heal", "hostname": "git.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-heal-2", "text": "restart the connector for media.example.com, it dropped off the edge", "op": "heal", "hostname": "media.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-heal-1", "text": "tunnel git.example.com mati, tolong hidupkan lagi", "op": "heal", "hostname": "git.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-heal-2", "text": "perbaiki koneksi ha.example.com yang putus", "op": "heal", "hostname": "ha.example.com", "port": 0, "service_scheme": "http"}
+{"id": "mix-heal-1", "text": "recover tunnel buat stats.example.com yang barusan drop", "op": "heal", "hostname": "stats.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-unexpose-1", "text": "take down old.example.com, I don't need it anymore", "op": "unexpose", "hostname": "old.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-unexpose-2", "text": "remove the public route for test.example.com", "op": "unexpose", "hostname": "test.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-unexpose-1", "text": "hapus akses publik untuk old.example.com", "op": "unexpose", "hostname": "old.example.com", "port": 0, "service_scheme": "http"}
+{"id": "id-unexpose-2", "text": "tutup tunnel demo.example.com, sudah tidak dipakai", "op": "unexpose", "hostname": "demo.example.com", "port": 0, "service_scheme": "http"}
+{"id": "mix-unexpose-1", "text": "unexpose staging.example.com dong, udah selesai", "op": "unexpose", "hostname": "staging.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-expose-4", "text": "put my paperless instance online at docs.example.com on port 8000", "op": "expose", "hostname": "docs.example.com", "port": 8000, "service_scheme": "http"}
+{"id": "en-expose-5", "text": "I want vaultwarden served at vault.example.com, https, port 8443", "op": "expose", "hostname": "vault.example.com", "port": 8443, "service_scheme": "https"}
+{"id": "id-expose-4", "text": "onlinekan immich di photos.example.com port 2283", "op": "expose", "hostname": "photos.example.com", "port": 2283, "service_scheme": "http"}
+{"id": "en-status-4", "text": "are all my tunnels healthy?", "op": "status", "hostname": "", "port": 0, "service_scheme": "http"}
+{"id": "id-diagnose-3", "text": "media.example.com kok lambat banget, ada apa?", "op": "diagnose", "hostname": "media.example.com", "port": 0, "service_scheme": "http"}
+{"id": "en-heal-3", "text": "fix the origin for docs.example.com, connection refused", "op": "heal", "hostname": "docs.example.com", "port": 0, "service_scheme": "http"}

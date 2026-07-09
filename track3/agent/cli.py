@@ -117,6 +117,36 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_plan(args) -> int:
+    """NL -> two local plans -> disagreement gate (Phase 2/3, needs Ollama)."""
+    from .brain.planner import DEFAULT_PLANNER, DEFAULT_VERIFIER, dual_plan
+    from .brain.llm import LLMError, OllamaClient
+
+    client = OllamaClient(args.endpoint)
+    try:
+        dp = dual_plan(args.text, planner_model=args.planner,
+                       verifier_model=args.verifier, client=client)
+    except LLMError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    def _fmt(res):
+        p = res.plan
+        body = f"{p.op} {p.hostname or '-'} :{p.port}/{p.service_scheme}" if p else "(no usable plan)"
+        return f"{body}   [{res.tokens_per_s:.0f} tok/s{', retried' if res.retried else ''}]"
+
+    print(f'"{args.text}"\n')
+    print(f"  planner  {args.planner:22} → {_fmt(dp.planner)}")
+    print(f"  verifier {args.verifier:22} → {_fmt(dp.verifier)}")
+    g = dp.gate
+    print(f"\n  blast radius : {g.blast_radius.name.lower()}")
+    print(f"  disagreement : {g.disagreement:.2f}"
+          + (f"  ({'; '.join(g.conflicts)})" if g.conflicts else ""))
+    print(f"  → DECISION   : {g.decision.value.upper()}")
+    print(f"    {g.rationale}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="terracegate", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -144,6 +174,13 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("status", help="print Cloudflare-side tunnel status")
     s.add_argument("--tunnel-id", required=True)
     s.set_defaults(func=cmd_status)
+
+    pl = sub.add_parser("plan", help="NL request → two local plans → safety gate")
+    pl.add_argument("text", help="the natural-language request, in quotes")
+    pl.add_argument("--endpoint", default="http://localhost:11434")
+    pl.add_argument("--planner", default="gemma3:12b")
+    pl.add_argument("--verifier", default="qwen2.5:3b-instruct")
+    pl.set_defaults(func=cmd_plan)
     return p
 
 

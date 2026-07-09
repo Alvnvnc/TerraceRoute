@@ -22,6 +22,25 @@ if verification fails. Failure diagnosis is pure rules. Risky actions are gated 
 is confidently wrong looks certain to itself; a second model of a different family
 diverges).
 
+## Phase 2/3 results (measured on AMD Radeon, gfx1100 / ROCm)
+
+Two local model families run on the GPU at once (`gemma3:12b` planner +
+`qwen2.5:3b-instruct` verifier); the Cloudflare token never leaves the machine.
+Full write-up + raw report: [`results/PHASE23_RESULTS.md`](results/PHASE23_RESULTS.md).
+
+- **NL → plan**: **100%** op accuracy and **100%** args accuracy on 34 labeled,
+  mixed Indonesian/English requests; 0 omissions; 57 tok/s on the planner.
+- **Safety gate**: **0% false-act** and **0% false-refuse** across 12 safe /
+  destructive / ambiguous / dangerous prompts. On vague or dangerous requests the
+  two model families diverge (disagreement 1.0) and the gate **refuses** — the
+  divergence, not any single model's confidence, is the signal.
+
+```
+python3 -m agent.cli plan "hapus semua DNS yang kelihatannya tidak dipakai"
+  planner  gemma3:12b          → unexpose   verifier qwen2.5:3b → diagnose
+  disagreement 1.00 · blast radius destructive · → DECISION: REFUSE
+```
+
 ## What works today (Phase 0 + Phase 1, no LLM)
 
 - **Typed Cloudflare tools** — create/configure/delete a remotely-managed tunnel,
@@ -35,10 +54,18 @@ diverges).
   tested (`agent/heal/taxonomy.py`).
 - **Safety gate** — blast-radius × disagreement → act / ask / refuse
   (`agent/brain/gate.py`).
-- **CLI** — `expose`, `teardown`, `diagnose`, `status` (`agent/cli.py`).
+- **CLI** — `expose`, `teardown`, `diagnose`, `status`, and `plan` (`agent/cli.py`).
 
-Coming next: Phase 2 (local-model NL → plan via Ollama constrained decoding) and
-Phase 3 (second model + live disagreement gate). See `plan.md` §7.
+## Phase 2/3 code (local LLM brain + gate)
+
+- **NL → plan** — constrained-JSON planner over local Ollama, reasoning-first
+  schema + in-distribution few-shot + omission retry (`agent/brain/llm.py`,
+  `agent/brain/planner.py`).
+- **Two-model gate** — `dual_plan` runs both families and feeds the disagreement
+  into the blast-radius matrix (`agent/brain/gate.py`).
+- **Eval harness** — labeled NL→plan set + refuse set + runner reporting the
+  numbers above (`eval/nl_plan_tasks.jsonl`, `eval/refuse_tasks.jsonl`,
+  `eval/run_brain_eval.py`).
 
 ## Quick start
 
