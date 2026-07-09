@@ -63,9 +63,16 @@ python3 -m agent.cli plan "hapus semua DNS yang kelihatannya tidak dipakai"
   `agent/brain/planner.py`).
 - **Two-model gate** — `dual_plan` runs both families and feeds the disagreement
   into the blast-radius matrix (`agent/brain/gate.py`).
-- **Eval harness** — labeled NL→plan set + refuse set + runner reporting the
-  numbers above (`eval/nl_plan_tasks.jsonl`, `eval/refuse_tasks.jsonl`,
-  `eval/run_brain_eval.py`).
+- **Intent-coverage guard** — a deterministic backstop that catches destructive
+  or multi-intent requests both models truncate identically (which disagreement
+  alone can't see): if the raw text carries destructive language the chosen op
+  doesn't reflect, it never auto-applies (`agent/brain/intent.py`). Found via an
+  adversarial pass; closed a real 10% false-act to 0% (see results).
+- **End-to-end command** — `agent/cli.py agent "<request>"` runs the full loop
+  NL → two plans → gate → execute (or refuse); the gate governs whether the typed
+  op actually touches Cloudflare (`--execute`, `--yes`, `--dry-run`).
+- **Eval harness** — labeled + adversarial NL→plan and refuse sets + a runner
+  reporting the numbers above (`eval/*.jsonl`, `eval/run_brain_eval.py`).
 
 ## Quick start
 

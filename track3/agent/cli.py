@@ -147,6 +147,105 @@ def cmd_plan(args) -> int:
     return 0
 
 
+def _tunnel_name(host: str) -> str:
+    return f"terracegate-{host.replace('.', '-')}"
+
+
+def cmd_agent(args) -> int:
+    """The full loop: NL -> two local plans -> gate -> execute (or refuse).
+
+    This is the headline demo: the gate decides whether the typed op runs. A
+    REFUSE never touches infra; a confirmation-required decision halts unless
+    ``--yes`` is passed; only AUTO_APPLY (or --yes) actually applies.
+    """
+    from .brain.planner import dual_plan
+    from .brain.llm import LLMError, OllamaClient
+    from .types import GateDecision
+
+    cfg = load_config()
+    client = OllamaClient(args.endpoint)
+    try:
+        dp = dual_plan(args.text, planner_model=args.planner,
+                       verifier_model=args.verifier, client=client)
+    except LLMError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    plan = dp.plan
+    g = dp.gate
+    print(f'"{args.text}"')
+    print(f"  planner  → {_plan_str(dp.planner.plan)}   verifier → {_plan_str(dp.verifier.plan)}")
+    print(f"  blast={g.blast_radius.name.lower()}  disagreement={g.disagreement:.2f}"
+          + (f"  ({'; '.join(g.conflicts)})" if g.conflicts else ""))
+    print(f"  → GATE: {g.decision.value.upper()} — {g.rationale}")
+
+    if g.decision == GateDecision.REFUSE:
+        print("  ✋ refusing to act; the two models disagree on a destructive action.")
+        return 3
+    if plan is None:
+        print("  no usable plan; nothing to do.", file=sys.stderr)
+        return 3
+
+    needs_confirm = g.decision in (GateDecision.CONFIRM, GateDecision.CONFIRM_PER_ITEM)
+    if needs_confirm and not args.yes:
+        print("  ⏸ this action needs confirmation. Re-run with --yes to apply.")
+        return 0
+
+    # --- execute the typed op (never the model; the model only chose it) ---
+    if not args.execute:
+        print("  (plan only; pass --execute to apply against Cloudflare)")
+        return 0
+    return _execute(plan, cfg, args)
+
+
+def _execute(plan, cfg, args) -> int:
+    dry = args.dry_run or not cfg.has_credentials
+    if dry and not args.dry_run:
+        print("  (no credentials in .env → dry-run)")
+    cf = _client(cfg, dry)
+    journal = Journal(path=cfg.journal_path)
+
+    if plan.op == "expose":
+        connector = None if dry else ConnectorManager()
+        verifier = (lambda h: True) if dry else None
+        print(f"  → expose {plan.hostname} → {plan.origin_service()}")
+        res = expose(cf, plan, journal, connector=connector, verifier=verifier)
+        for s in res.steps:
+            print(f"     • {s}")
+        print(f"  {'✓ live at ' + res.url if res.ok else '✗ ' + res.error + ' (rolled back)'}")
+        return 0 if res.ok else 1
+
+    if plan.op == "unexpose":
+        name = _tunnel_name(plan.hostname)
+        tunnel_id = cf.find_tunnel_by_name(name) or ""
+        dns_id = cf.find_dns_record(plan.hostname) or ""
+        print(f"  → teardown {plan.hostname} (tunnel={tunnel_id or '?'}, dns={dns_id or '?'})")
+        res = teardown(cf, plan.hostname, tunnel_id, dns_id, journal)
+        for s in res.steps:
+            print(f"     • {s}")
+        print(f"  {'✓ torn down' if res.ok else '✗ ' + res.error}")
+        return 0 if res.ok else 1
+
+    if plan.op == "status":
+        edge = probe(f"https://{plan.hostname}/") if plan.hostname else None
+        if edge is not None:
+            print(f"  edge: reachable={edge.reachable} code={edge.effective_code}")
+        return 0
+
+    if plan.op == "diagnose":
+        return cmd_diagnose(argparse.Namespace(
+            host=plan.hostname, metrics=cfg.metrics_addr, tunnel_id=""))
+
+    print(f"  op '{plan.op}' has no one-shot executor; use `diagnose`/`status`.")
+    return 0
+
+
+def _plan_str(p) -> str:
+    if p is None:
+        return "(none)"
+    return f"{p.op} {p.hostname or '-'}:{p.port}/{p.service_scheme}"
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="terracegate", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -181,6 +280,19 @@ def build_parser() -> argparse.ArgumentParser:
     pl.add_argument("--planner", default="gemma3:12b")
     pl.add_argument("--verifier", default="qwen2.5:3b-instruct")
     pl.set_defaults(func=cmd_plan)
+
+    ag = sub.add_parser("agent", help="full loop: NL → gate → execute (or refuse)")
+    ag.add_argument("text", help="the natural-language request, in quotes")
+    ag.add_argument("--endpoint", default="http://localhost:11434")
+    ag.add_argument("--planner", default="gemma3:12b")
+    ag.add_argument("--verifier", default="qwen2.5:3b-instruct")
+    ag.add_argument("--execute", action="store_true",
+                    help="actually apply the op (default: plan only)")
+    ag.add_argument("--yes", action="store_true",
+                    help="approve a confirmation-gated action")
+    ag.add_argument("--dry-run", action="store_true",
+                    help="exercise execution with no network/credentials")
+    ag.set_defaults(func=cmd_agent)
     return p
 
 

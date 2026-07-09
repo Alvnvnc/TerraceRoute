@@ -100,6 +100,17 @@ class CloudflareClient:
             return
         self._request("DELETE", f"/accounts/{self.account_id}/cfd_tunnel/{tunnel_id}")
 
+    def find_tunnel_by_name(self, name: str) -> Optional[str]:
+        """Return the id of a live (non-deleted) tunnel named ``name``, if any."""
+        if self.dry_run:
+            return f"dryrun-{name}"
+        res = self._request(
+            "GET",
+            f"/accounts/{self.account_id}/cfd_tunnel?name={name}&is_deleted=false",
+        )
+        tunnels = res if isinstance(res, list) else []
+        return tunnels[0]["id"] if tunnels else None
+
     # ---- DNS --------------------------------------------------------------- #
     def create_dns_cname(self, name: str, tunnel_id: str, proxied: bool = True) -> str:
         """Create the proxied CNAME ``name`` -> ``{tunnel_id}.cfargotunnel.com``.

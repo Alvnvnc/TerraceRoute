@@ -1,0 +1,20 @@
+{"id": "adv-typo-1", "text": "expse my jellyfn on media.example.com prot 8096 plz", "op": "expose", "hostname": "media.example.com", "port": 8096, "service_scheme": "http"}
+{"id": "adv-typo-2", "text": "tolng buka grafana d stats.example.com portt 3000 pake https", "op": "expose", "hostname": "stats.example.com", "port": 3000, "service_scheme": "https"}
+{"id": "adv-filler-1", "text": "hey so uhh when you get a sec could you maybe expose my nextcloud thing at cloud.example.com it runs on 8080 thanks", "op": "expose", "hostname": "cloud.example.com", "port": 8080, "service_scheme": "http"}
+{"id": "adv-filler-2", "text": "ok jadi gini, aku ada gitea nih, tolong onlinekan di git.example.com ya, portnya 3000, makasih banyak", "op": "expose", "hostname": "git.example.com", "port": 3000, "service_scheme": "http"}
+{"id": "adv-codeswitch-1", "text": "please expose my home assistant di ha.example.com, the port adalah 8123", "op": "expose", "hostname": "ha.example.com", "port": 8123, "service_scheme": "http"}
+{"id": "adv-codeswitch-2", "text": "bisa tolong publish immich saya at photos.example.com on port 2283?", "op": "expose", "hostname": "photos.example.com", "port": 2283, "service_scheme": "http"}
+{"id": "adv-portword-1", "text": "expose paperless at docs.example.com on port eight thousand", "op": "expose", "hostname": "docs.example.com", "port": 8000, "service_scheme": "http"}
+{"id": "adv-deepsub-1", "text": "expose my api at v2.api.internal.example.com port 9000", "op": "expose", "hostname": "v2.api.internal.example.com", "port": 9000, "service_scheme": "http"}
+{"id": "adv-https-implied-1", "text": "serve vaultwarden securely at vault.example.com, it's TLS on 8443", "op": "expose", "hostname": "vault.example.com", "port": 8443, "service_scheme": "https"}
+{"id": "adv-status-typo-1", "text": "iz media.example.com uppp rn??", "op": "status", "hostname": "media.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-status-filler-1", "text": "quick one — just wanna know if blog.example.com is currently reachable or not", "op": "status", "hostname": "blog.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-diagnose-codeswitch-1", "text": "why ya app.example.com kok kena 502 terus, investigate dong", "op": "diagnose", "hostname": "app.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-diagnose-verbose-1", "text": "something is really off with cloud.example.com, users report timeouts, can you look into what's failing", "op": "diagnose", "hostname": "cloud.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-heal-typo-1", "text": "the tunel for git.example.com ded, brng it bak up", "op": "heal", "hostname": "git.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-heal-codeswitch-1", "text": "connector buat stats.example.com barusan drop, tolong restart lagi", "op": "heal", "hostname": "stats.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-unexpose-polite-1", "text": "hey no rush but you can safely remove old.example.com now, we migrated off it", "op": "unexpose", "hostname": "old.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-unexpose-codeswitch-1", "text": "tolong take down staging.example.com aja, udah nggak dipake", "op": "unexpose", "hostname": "staging.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-negation-1", "text": "don't expose anything new — I just want to check if git.example.com is up", "op": "status", "hostname": "git.example.com", "port": 0, "service_scheme": "http"}
+{"id": "adv-context-1", "text": "my grafana moved to a new box, re-point stats.example.com to port 3001", "op": "expose", "hostname": "stats.example.com", "port": 3001, "service_scheme": "http"}
+{"id": "adv-emoji-1", "text": "🚀 expose media.example.com port 8096 let's go", "op": "expose", "hostname": "media.example.com", "port": 8096, "service_scheme": "http"}

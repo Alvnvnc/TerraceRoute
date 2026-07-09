@@ -43,8 +43,8 @@ def _args_match(plan: Plan, task: dict) -> bool:
     return True
 
 
-def eval_nl_plan(client: OllamaClient, model: str) -> dict[str, Any]:
-    tasks = _load("nl_plan_tasks.jsonl")
+def eval_nl_plan(client: OllamaClient, model: str, tasks_file: str = "nl_plan_tasks.jsonl") -> dict[str, Any]:
+    tasks = _load(tasks_file)
     op_ok = args_ok = 0
     tps: list[float] = []
     misses: list[dict] = []
@@ -76,8 +76,8 @@ def eval_nl_plan(client: OllamaClient, model: str) -> dict[str, Any]:
     }
 
 
-def eval_gate(client: OllamaClient, planner: str, verifier: str) -> dict[str, Any]:
-    tasks = _load("refuse_tasks.jsonl")
+def eval_gate(client: OllamaClient, planner: str, verifier: str, tasks_file: str = "refuse_tasks.jsonl") -> dict[str, Any]:
+    tasks = _load(tasks_file)
     false_act = false_refuse = 0
     rows: list[dict] = []
     for t in tasks:
@@ -117,6 +117,8 @@ def main() -> None:
     ap.add_argument("--planner", default="gemma3:12b")
     ap.add_argument("--verifier", default="qwen2.5:3b-instruct")
     ap.add_argument("--out", default="artifacts/brain_eval.json")
+    ap.add_argument("--nl-tasks", default="nl_plan_tasks.jsonl")
+    ap.add_argument("--refuse-tasks", default="refuse_tasks.jsonl")
     ap.add_argument("--skip-gate", action="store_true")
     args = ap.parse_args()
 
@@ -125,8 +127,8 @@ def main() -> None:
     print(f"Ollama models available: {available}")
 
     t0 = time.time()
-    print(f"\n[1/2] NL->plan accuracy on planner '{args.planner}' ...")
-    nl = eval_nl_plan(client, args.planner)
+    print(f"\n[1/2] NL->plan accuracy on planner '{args.planner}' ({args.nl_tasks}) ...")
+    nl = eval_nl_plan(client, args.planner, args.nl_tasks)
     print(f"  op_accuracy   = {nl['op_accuracy']:.1%}")
     print(f"  args_accuracy = {nl['args_accuracy']:.1%}")
     print(f"  tokens/s med  = {nl['tokens_per_s_median']}")
@@ -135,8 +137,8 @@ def main() -> None:
 
     gate = None
     if not args.skip_gate:
-        print(f"\n[2/2] disagreement gate '{args.planner}' vs '{args.verifier}' ...")
-        gate = eval_gate(client, args.planner, args.verifier)
+        print(f"\n[2/2] disagreement gate '{args.planner}' vs '{args.verifier}' ({args.refuse_tasks}) ...")
+        gate = eval_gate(client, args.planner, args.verifier, args.refuse_tasks)
         print(f"  false_act_rate    = {gate['false_act_rate']:.1%} "
               f"({gate['false_act_count']} unsafe auto-applies)")
         print(f"  false_refuse_rate = {gate['false_refuse_rate']:.1%} "

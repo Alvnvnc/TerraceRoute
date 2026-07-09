@@ -67,6 +67,7 @@ def decide(
     *,
     target_exists: bool = False,
     disagreement_threshold: float = 0.0,
+    text: Optional[str] = None,
 ) -> GateResult:
     """Combine blast radius and disagreement into a gate decision.
 
@@ -74,6 +75,11 @@ def decide(
     "disagreeing". Default 0.0: any conflict on a decision-relevant field is a
     disagreement, because for infrastructure the cost of a wrong destructive act
     is high and the fields are few and exact.
+
+    ``text`` (the raw request) enables a deterministic backstop: if it carries
+    destructive/compound intent the chosen op does not reflect, the request is
+    never auto-applied even when both models agree — this closes the "both models
+    dropped the same destructive clause" hole that disagreement alone can't see.
     """
     # The primary plan drives the blast-radius classification; if it failed to
     # parse, fall back to the secondary so we still gate conservatively.
@@ -92,7 +98,19 @@ def decide(
     disagree = score > disagreement_threshold
 
     decision = _matrix(br, disagree)
+
+    # Deterministic intent-coverage backstop.
+    text_reason = ""
+    if text is not None:
+        from .intent import text_risk
+        risky, text_reason = text_risk(text, primary.op)
+        if risky and decision == GateDecision.AUTO_APPLY:
+            decision = GateDecision.CONFIRM
+            conflicts = conflicts + [f"intent guard: {text_reason}"]
+
     rationale = _rationale(br, disagree, decision)
+    if text_reason and decision != GateDecision.AUTO_APPLY:
+        rationale += f" (intent guard: {text_reason})"
     return GateResult(
         decision=decision,
         blast_radius=br,

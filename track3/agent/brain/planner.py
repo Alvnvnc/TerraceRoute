@@ -71,5 +71,5 @@ def dual_plan(
     client = client or OllamaClient()
     a = client.plan(planner_model, text)
     b = client.plan(verifier_model, text)
-    gate = decide(a.plan, b.plan, target_exists=target_exists)
+    gate = decide(a.plan, b.plan, target_exists=target_exists, text=text)
     return DualPlan(text=text, planner=a, verifier=b, gate=gate)
