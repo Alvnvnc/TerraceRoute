@@ -1,0 +1,143 @@
+{"id": 1, "input": "Convert the decimal number 29 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["XXIX"]}
+{"id": 2, "input": "What is 6 factorial (6!)? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["720", "720"]}
+{"id": 3, "input": "How many times does the letter 's' appear in 'mississippi'? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["4", "4"]}
+{"id": 4, "input": "If today is Sunday, what day of the week will it be 88 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Thursday"]}
+{"id": 5, "input": "Convert the decimal number 49 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["XLIX"]}
+{"id": 6, "input": "Which is larger: 0.3 or 0.25? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["0.3"]}
+{"id": 7, "input": "A product costs $80. It is discounted 25%, then an additional 15% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["51", "51"]}
+{"id": 8, "input": "Write a Python function fib(n) returning the nth Fibonacci number iteratively (fib(0)=0, fib(1)=1).", "grader": "judge", "difficulty": "medium", "reference": "def fib(n):\n a,b=0,1\n for _ in range(n): a,b=b,a+b\n return a"}
+{"id": 9, "input": "What is the binary number 11000110 in decimal? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["198", "198"]}
+{"id": 10, "input": "Compute 6^10 mod 9. Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["0", "0"]}
+{"id": 11, "input": "Explain the difference between TCP and UDP in three points.", "grader": "judge", "difficulty": "medium", "reference": "TCP is connection-oriented, reliable/ordered with retransmission; UDP is connectionless, unreliable, faster with lower overhead."}
+{"id": 12, "input": "What is the least common multiple of 16 and 12? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["48", "48"]}
+{"id": 13, "input": "What is the 20th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["71", "71"]}
+{"id": 14, "input": "What is the 5th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["11", "11"]}
+{"id": 15, "input": "What is 20% of 40? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["8", "8"]}
+{"id": 16, "input": "What is the 7th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["17", "17"]}
+{"id": 17, "input": "What is the least common multiple of 5 and 11? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["55", "55"]}
+{"id": 18, "input": "What is the next number in the sequence: 3, 6, 12, 24, ? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["48", "48"]}
+{"id": 19, "input": "What is the greatest common divisor of 57 and 38? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["19", "19"]}
+{"id": 20, "input": "A product costs $150. It is discounted 10%, then an additional 15% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["114.75"]}
+{"id": 21, "input": "A product costs $200. It is discounted 10%, then an additional 15% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["153", "153"]}
+{"id": 22, "input": "Convert the decimal number 158 to binary. Give only the binary digits.", "grader": "exact", "difficulty": "medium", "answer": ["10011110"]}
+{"id": 23, "input": "What is 43 * 40? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1720", "1,720"]}
+{"id": 24, "input": "If it takes 5 machines 5 minutes to make 5 widgets, how many minutes for 100 machines to make 100 widgets? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["5", "5"]}
+{"id": 25, "input": "Convert the decimal number 76 to hexadecimal. Give only the hex digits (no 0x).", "grader": "exact", "difficulty": "medium", "answer": ["4c", "4C", "0x4c"]}
+{"id": 26, "input": "If a=4 and b=4, what is a^2 + 2ab + b^2? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["64", "64"]}
+{"id": 27, "input": "A farmer has 17 sheep. All but 9 run away. How many sheep are left? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["9", "9"]}
+{"id": 28, "input": "What is the 12th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["37", "37"]}
+{"id": 29, "input": "Compute 2^10 mod 13. Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["10", "10"]}
+{"id": 30, "input": "What is 5 factorial (5!)? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["120", "120"]}
+{"id": 31, "input": "What is the least common multiple of 11 and 14? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["154", "154"]}
+{"id": 32, "input": "What is the greatest common divisor of 32 and 59? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1", "1"]}
+{"id": 33, "input": "What is the next number in the sequence: 2, 8, 14, 20, 26, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["32", "32"]}
+{"id": 34, "input": "A product costs $120. It is discounted 25%, then an additional 15% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["76.5"]}
+{"id": 35, "input": "What is the least common multiple of 9 and 18? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["18", "18"]}
+{"id": 36, "input": "What is the least common multiple of 12 and 6? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["12", "12"]}
+{"id": 37, "input": "There are three killers in a room. Someone enters and kills one of them. Nobody leaves. How many killers are left? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["3", "3"]}
+{"id": 38, "input": "On an analog clock at 6:00, what is the angle in degrees between the hour and minute hands? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["180", "180"]}
+{"id": 39, "input": "What is the 7th Fibonacci number, where fib(1)=1, fib(2)=1? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["13", "13"]}
+{"id": 40, "input": "Convert the decimal number 341 to hexadecimal. Give only the hex digits (no 0x).", "grader": "exact", "difficulty": "medium", "answer": ["155", "155", "0x155"]}
+{"id": 41, "input": "Convert the decimal number 99 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["XCIX"]}
+{"id": 42, "input": "Convert the decimal number 101 to hexadecimal. Give only the hex digits (no 0x).", "grader": "exact", "difficulty": "medium", "answer": ["65", "65", "0x65"]}
+{"id": 43, "input": "Which number is larger: 9.11 or 9.9? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["9.9"]}
+{"id": 44, "input": "Convert the decimal number 14 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["XIV"]}
+{"id": 45, "input": "What is the 15th Fibonacci number, where fib(1)=1, fib(2)=1? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["610", "610"]}
+{"id": 46, "input": "A product costs $120. It is discounted 10%, then an additional 10% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["97.2"]}
+{"id": 47, "input": "How many letters are in the word 'onomatopoeia'? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["12", "12"]}
+{"id": 48, "input": "What is the 10th Fibonacci number, where fib(1)=1, fib(2)=1? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["55", "55"]}
+{"id": 49, "input": "Compute 5^11 mod 13. Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["8", "8"]}
+{"id": 50, "input": "A snail climbs a 10m well: +3m each day, -2m each night. On which day does it reach the top? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["8", "8"]}
+{"id": 51, "input": "What is the next number in the sequence: 7, 10, 13, 16, 19, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["22", "22"]}
+{"id": 52, "input": "If a=3 and b=10, what is a^2 + 2ab + b^2? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["169", "169"]}
+{"id": 53, "input": "What is 29 * 25? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["725", "725"]}
+{"id": 54, "input": "A product costs $100. It is discounted 25%, then an additional 10% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["67.5"]}
+{"id": 55, "input": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["1", "1"]}
+{"id": 56, "input": "What is the sum of all integers from 1 to 10? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["55", "55"]}
+{"id": 57, "input": "What is the 12th Fibonacci number, where fib(1)=1, fib(2)=1? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["144", "144"]}
+{"id": 58, "input": "What is the greatest common divisor of 17 and 96? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1", "1"]}
+{"id": 59, "input": "What is 10% of 200? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["20", "20"]}
+{"id": 60, "input": "What is 15% of 120? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["18", "18"]}
+{"id": 61, "input": "What is the derivative of f(x) = x^3 * ln(x)?", "grader": "judge", "difficulty": "hard", "reference": "f'(x) = 3x^2 ln(x) + x^2 = x^2(3 ln x + 1)."}
+{"id": 62, "input": "Compute 4^6 mod 9. Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["1", "1"]}
+{"id": 63, "input": "Convert the decimal number 9 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["IX"]}
+{"id": 64, "input": "What is 15% of 200? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["30", "30"]}
+{"id": 65, "input": "What is 15 * 47? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["705", "705"]}
+{"id": 66, "input": "What is the next number in the sequence: 2, 6, 18, 54, ? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["162", "162"]}
+{"id": 67, "input": "If today is Tuesday, what day of the week will it be 24 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Friday"]}
+{"id": 68, "input": "Convert the decimal number 65 to binary. Give only the binary digits.", "grader": "exact", "difficulty": "medium", "answer": ["1000001"]}
+{"id": 69, "input": "What is the sum of all integers from 1 to 100? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["5050", "5,050"]}
+{"id": 70, "input": "Design a secure multi-tenant RBAC architecture with dynamic permissions, audit logging, and tenant isolation.", "grader": "judge", "difficulty": "hard", "reference": "Per-tenant roles/permissions/bindings, a policy decision point, enforcement at API middleware, tenant_id with row-level security, append-only audit log."}
+{"id": 71, "input": "What is the next number in the sequence: 2, 4, 8, 16, ? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["32", "32"]}
+{"id": 72, "input": "How many times does the letter 'r' appear in the word 'strawberry'? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["3", "3"]}
+{"id": 73, "input": "A product costs $80. It is discounted 25%, then an additional 15% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["51", "51"]}
+{"id": 74, "input": "If today is Thursday, what day of the week will it be 14 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Thursday"]}
+{"id": 75, "input": "What is 15% of 60? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["9", "9"]}
+{"id": 76, "input": "If a=6 and b=10, what is a^2 + 2ab + b^2? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["256", "256"]}
+{"id": 77, "input": "Convert the decimal number 368 to hexadecimal. Give only the hex digits (no 0x).", "grader": "exact", "difficulty": "medium", "answer": ["170", "170", "0x170"]}
+{"id": 78, "input": "What is the next number in the sequence: 7, 15, 23, 31, 39, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["47", "47"]}
+{"id": 79, "input": "If today is Saturday, what day of the week will it be 134 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Sunday"]}
+{"id": 80, "input": "On an analog clock at 9:00, what is the angle in degrees between the hour and minute hands? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["90", "90"]}
+{"id": 81, "input": "What is 25% of 200? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["50", "50"]}
+{"id": 82, "input": "What is the 10th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["29", "29"]}
+{"id": 83, "input": "Given severe class imbalance (1:1000), compare three strategies to improve minority-class recall without destroying precision.", "grader": "judge", "difficulty": "hard", "reference": "Resampling (SMOTE/undersampling), class-weighted loss, and threshold/cost-sensitive tuning, discussing the precision-recall tradeoff."}
+{"id": 84, "input": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["0.05", "$0.05", ".05"]}
+{"id": 85, "input": "Analyze and give the single most likely root cause: 'psycopg2.OperationalError: FATAL: too many connections for role app_user'.", "grader": "judge", "difficulty": "medium", "reference": "The Postgres connection limit is exhausted; connections not pooled/released. Fix with pooling and closing connections."}
+{"id": 86, "input": "What is the next number in the sequence: 6, 9, 12, 15, 18, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["21", "21"]}
+{"id": 87, "input": "What is the next number in the sequence: 5, 13, 21, 29, 37, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["45", "45"]}
+{"id": 88, "input": "If a=12 and b=9, what is a^2 + 2ab + b^2? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["441", "441"]}
+{"id": 89, "input": "What is 66 * 16? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1056", "1,056"]}
+{"id": 90, "input": "What is the binary number 10000011 in decimal? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["131", "131"]}
+{"id": 91, "input": "On an analog clock at 3:00, what is the angle in degrees between the hour and minute hands? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["90", "90"]}
+{"id": 92, "input": "Summarize in one sentence: mitochondria produce ATP through cellular respiration, powering the cell.", "grader": "judge", "difficulty": "easy", "reference": "Mitochondria generate the cell's energy (ATP) via cellular respiration."}
+{"id": 93, "input": "What is the 15th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["47", "47"]}
+{"id": 94, "input": "Convert the decimal number 101 to binary. Give only the binary digits.", "grader": "exact", "difficulty": "medium", "answer": ["1100101"]}
+{"id": 95, "input": "What is the next number in the sequence: 3, 12, 21, 30, 39, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["48", "48"]}
+{"id": 96, "input": "If today is Monday, what day of the week will it be 31 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Thursday"]}
+{"id": 97, "input": "What is 25% of 60? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["15", "15"]}
+{"id": 98, "input": "A product costs $200. It is discounted 20%, then an additional 20% off the reduced price. Final price in dollars? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["128", "128"]}
+{"id": 99, "input": "Compute 3^9 mod 13. Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["1", "1"]}
+{"id": 100, "input": "On an analog clock at 3:15, what is the angle in degrees between the hour and minute hands? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["7.5"]}
+{"id": 101, "input": "What is the greatest common divisor of 93 and 58? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1", "1"]}
+{"id": 102, "input": "What is the binary number 11100 in decimal? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["28", "28"]}
+{"id": 103, "input": "On an analog clock at 4:40, what is the angle in degrees between the hour and minute hands? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["100", "100"]}
+{"id": 104, "input": "Convert the decimal number 44 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["XLIV"]}
+{"id": 105, "input": "If today is Monday, what day of the week will it be 102 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Friday"]}
+{"id": 106, "input": "If a=10 and b=4, what is a^2 + 2ab + b^2? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["196", "196"]}
+{"id": 107, "input": "Convert the decimal number 4 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["IV"]}
+{"id": 108, "input": "What is the greatest common divisor of 41 and 49? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1", "1"]}
+{"id": 109, "input": "What is the binary number 10001 in decimal? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["17", "17"]}
+{"id": 110, "input": "What is the next number in the sequence: 1, 3, 9, 27, ? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["81", "81"]}
+{"id": 111, "input": "What is the least common multiple of 9 and 11? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["99", "99"]}
+{"id": 112, "input": "Explain what Docker is in two sentences.", "grader": "judge", "difficulty": "easy", "reference": "Docker packages applications and dependencies into portable containers that run consistently across environments."}
+{"id": 113, "input": "Convert the decimal number 98 to hexadecimal. Give only the hex digits (no 0x).", "grader": "exact", "difficulty": "medium", "answer": ["62", "62", "0x62"]}
+{"id": 114, "input": "I have 3 apples today. Yesterday I ate one. How many apples do I have now? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["3", "3"]}
+{"id": 115, "input": "What is the 8th prime number? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["19", "19"]}
+{"id": 116, "input": "What is 7 factorial (7!)? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["5040", "5,040"]}
+{"id": 117, "input": "What is 98 * 81? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["7938", "7,938"]}
+{"id": 118, "input": "Rewrite concisely: 'In light of the fact that it was raining, we decided to stay indoors.'", "grader": "judge", "difficulty": "easy", "reference": "Because it was raining, we stayed indoors."}
+{"id": 119, "input": "What is 39 * 41? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1599", "1,599"]}
+{"id": 120, "input": "What is the greatest common divisor of 24 and 60? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["12", "12"]}
+{"id": 121, "input": "What is 15 * 23? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["345", "345"]}
+{"id": 122, "input": "What is the next number in the sequence: 9, 11, 13, 15, 17, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["19", "19"]}
+{"id": 123, "input": "If today is Friday, what day of the week will it be 92 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Saturday"]}
+{"id": 124, "input": "What is 76 * 89? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["6764", "6,764"]}
+{"id": 125, "input": "What is 93 * 26? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["2418", "2,418"]}
+{"id": 126, "input": "What is the greatest common divisor of 22 and 41? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1", "1"]}
+{"id": 127, "input": "Convert the decimal number 90 to Roman numerals.", "grader": "exact", "difficulty": "medium", "answer": ["XC"]}
+{"id": 128, "input": "Convert the decimal number 139 to binary. Give only the binary digits.", "grader": "exact", "difficulty": "medium", "answer": ["10001011"]}
+{"id": 129, "input": "What is 23 * 87? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["2001", "2,001"]}
+{"id": 130, "input": "What is the next number in the sequence: 2, 4, 8, 16, ? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["32", "32"]}
+{"id": 131, "input": "What is 20% of 80? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["16", "16"]}
+{"id": 132, "input": "Convert the decimal number 44 to binary. Give only the binary digits.", "grader": "exact", "difficulty": "medium", "answer": ["101100"]}
+{"id": 133, "input": "What is the binary number 11100001 in decimal? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["225", "225"]}
+{"id": 134, "input": "What is the greatest common divisor of 47 and 70? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1", "1"]}
+{"id": 135, "input": "Which number is larger: 8.8 or 8.15? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["8.8"]}
+{"id": 136, "input": "If a=11 and b=8, what is a^2 + 2ab + b^2? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["361", "361"]}
+{"id": 137, "input": "What is the sum of all integers from 1 to 50? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["1275", "1,275"]}
+{"id": 138, "input": "If today is Tuesday, what day of the week will it be 155 days from now?", "grader": "exact", "difficulty": "medium", "answer": ["Wednesday"]}
+{"id": 139, "input": "On an analog clock at 2:20, what is the angle in degrees between the hour and minute hands? Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["50", "50"]}
+{"id": 140, "input": "What is the next number in the sequence: 8, 14, 20, 26, 32, ? Answer with just the number.", "grader": "exact", "difficulty": "medium", "answer": ["38", "38"]}
+{"id": 141, "input": "Compute 3^9 mod 9. Answer with just the number.", "grader": "exact", "difficulty": "hard", "answer": ["0", "0"]}
+{"id": 142, "input": "Prove that the sum of the first n odd numbers equals n^2 by induction.", "grader": "judge", "difficulty": "hard", "reference": "Base n=1: 1=1^2. Step: assume first k odds sum to k^2; the (k+1)th odd is 2k+1, so k^2+2k+1=(k+1)^2. QED."}
+{"id": 143, "input": "Convert the decimal number 111 to binary. Give only the binary digits.", "grader": "exact", "difficulty": "medium", "answer": ["1101111"]}

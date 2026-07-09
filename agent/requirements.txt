@@ -1,0 +1,5 @@
+# Lapisan jaringan pakai urllib (stdlib) → tak perlu httpx/requests.
+# Model lokal in-process via llama-cpp-python (CPU-only). numpy dependensinya.
+llama-cpp-python==0.3.2
+numpy<2
+huggingface_hub==0.25.2

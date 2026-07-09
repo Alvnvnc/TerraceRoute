@@ -1,0 +1,57 @@
+# TerraceRoute Track-1 agent — CPU-only, target scoring env 4 GB RAM / 2 vCPU.
+# Batch: baca /input/tasks.json → tulis /output/results.json. Lihat plan-v2.md.
+#
+# Multi-stage: builder mengkompilasi llama-cpp-python dari source untuk glibc
+# (wheel prebuilt "cpu" ter-link musl → tak jalan di image slim/glibc), runtime ramping.
+
+# ---------- builder ----------
+FROM python:3.11-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake git \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH=/opt/venv/bin:$PATH
+
+COPY agent/requirements.txt /tmp/req.txt
+# GGML_NATIVE=OFF → portabel (jangan pakai instruksi CPU host build-time yang mungkin
+# tak ada di mesin scoring). Kompilasi dari source = kompatibel glibc.
+RUN CMAKE_ARGS="-DGGML_NATIVE=OFF" pip install --no-cache-dir -r /tmp/req.txt
+
+# ---------- runtime ----------
+FROM python:3.11-slim
+
+ARG MODEL_REPO=bartowski/Qwen2.5-3B-Instruct-GGUF
+ARG MODEL_FILE=Qwen2.5-3B-Instruct-Q4_K_M.gguf
+
+ENV PYTHONUNBUFFERED=1 \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    PATH=/opt/venv/bin:$PATH \
+    LOCAL_BACKEND=llamacpp \
+    LLAMACPP_MODEL_PATH=/models/local.gguf \
+    LLAMACPP_THREADS=2 \
+    LLAMACPP_CTX=4096 \
+    ESCALATION_LEVEL=1 \
+    WATCHDOG_S=510
+
+# libgomp1 = runtime OpenMP untuk llama.cpp terkompilasi (libstdc++6 sudah ada di base).
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+
+# Unduh model saat build → image self-contained (tak butuh internet saat scoring).
+RUN python -c "from huggingface_hub import hf_hub_download; import shutil, os; \
+os.makedirs('/models', exist_ok=True); \
+p=hf_hub_download(repo_id='${MODEL_REPO}', filename='${MODEL_FILE}'); \
+shutil.copy(p, '/models/local.gguf')" \
+ && rm -rf /root/.cache/huggingface
+
+COPY agent/ /app/agent/
+
+# Warm-up: gagal cepat saat BUILD bila model tak bisa di-load (bukan saat scoring).
+RUN python -c "from llama_cpp import Llama; Llama(model_path='/models/local.gguf', n_ctx=512, n_threads=2, verbose=False); print('warm-up OK')"
+
+ENTRYPOINT ["python", "-m", "agent.run"]
