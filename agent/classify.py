@@ -18,19 +18,26 @@ CODE_GEN = "code_gen"
 
 CATEGORIES = [FACTUAL, MATH, SENTIMENT, SUMMARISATION, NER, CODE_DEBUG, LOGICAL, CODE_GEN]
 
-# Kategori "jebakan penalaran": model kecil sering confident-wrong (temuan kalibrasi).
-TRAP_CATEGORIES = {LOGICAL, MATH}
+# Catatan: konsep "kategori jebakan" (logical+math) sudah digantikan rung eskalasi
+# per-level berbasis data di solve._LEVEL_CATEGORIES (lihat eval/escalation-math.md).
 
 _RE_CODE = re.compile(r"```|\bdef \w+\(|\bfunction \w+\(|\breturn\b|\bimport \b|=>|\bclass \w+", re.I)
 _RE_DEBUG = re.compile(r"\b(bug|fix|debug|error|wrong|incorrect|broken|corrected?)\b", re.I)
 _RE_GEN = re.compile(r"\b(write|implement|create|generate)\b.*\b(function|method|program|code|script)\b", re.I)
 _RE_MATH = re.compile(r"\d.*[-+*/%]|\bhow many\b|\bpercent|\b%|\bsum\b|\baverage\b|\btotal\b|"
-                      r"\bcalculate\b|\bremain\b|\bcost\b|\bprofit\b|\bmultiply\b|\bdivide\b", re.I)
+                      r"\bcalculate\b|\bremain\b|\bcost\b|\bprofit\b|\bmultipl|\bdivide[sd]?\b|"
+                      r"\bdivisor\b|\bfactorial\b|\bfibonacci\b|\bprime number\b|\bsquare root\b|"
+                      r"\bspeed\b|\bkm/h\b", re.I)
 _RE_SENTIMENT = re.compile(r"\bsentiment\b|\bpositive or negative\b|\bclassify (the )?(sentiment|review|tone)\b", re.I)
 _RE_SUMMARY = re.compile(r"\bsummari[sz]e\b|\bsummary\b|\bin (one|two|\d+) sentences?\b|\bcondense\b|\btl;?dr\b", re.I)
 _RE_NER = re.compile(r"\bnamed entit|\bextract .*(entit|people|person|organi|location|date)|\bidentify .*(entit|name)", re.I)
 _RE_LOGIC = re.compile(r"\bwho owns\b|\bwho is\b.*\?|\bif .* then\b|\beach (own|has)\b|\bpuzzle\b|"
-                       r"\bdeduc|\blogical|\bknights? and knaves\b|\bwho (killed|committed)\b", re.I)
+                       r"\bdeduc|\blogical|\bknights? and knaves\b|\bwho (killed|committed)\b|"
+                       # Riddle/trap umum (temuan eval v4: sering lolos ke math/factual padahal
+                       # butuh jalur trap): "all but", "are left", tanggal relatif, silogisme.
+                       r"\ball but\b|\b(?:are|is) left\b|\bnobody (?:leaves|left)\b|"
+                       r"\bwhat day\b|\bdays? (?:after|before|from) (?:tomorrow|yesterday|today)\b|"
+                       r"\bcan (?:we|you) (?:logically )?conclude\b|\balways (?:tell|lie)|\btruth-?teller", re.I)
 _RE_FACT = re.compile(r"\bwhat is\b|\bwho (is|was|were)\b|\bwhen (did|was)\b|\bwhere (is|was)\b|"
                       r"\bexplain\b|\bdefine\b|\bhow (does|do) \b", re.I)
 

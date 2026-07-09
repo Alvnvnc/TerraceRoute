@@ -51,8 +51,10 @@ class Config:
     llamacpp_ctx: int = field(default_factory=lambda: _env_int("LLAMACPP_CTX", 4096))
 
     # --- Kebijakan routing / eskalasi ---
-    # 0 = zero-API (lokal saja); 1 = escalate hanya verifikasi-gagal; 2 = + kategori jebakan;
-    # 3 = agresif (escalate saat ragu). Knob utama yang di-tune lewat leaderboard.
+    # 0 = zero-API (lokal saja); 1 = escalate hanya verifikasi-gagal/kosong;
+    # 2 = + math & factual tak terverifikasi; 3 = + sentiment & logical;
+    # 4 = semua yang tak terverifikasi. Urutan rung berbasis data (eval/escalation-math.md).
+    # Knob utama yang di-tune lewat ladder submission leaderboard.
     escalation_level: int = field(default_factory=lambda: _env_int("ESCALATION_LEVEL", 1))
 
     # --- Anggaran waktu (aturan: total 10 menit) ---
@@ -63,14 +65,21 @@ class Config:
     local_max_tokens: int = field(default_factory=lambda: _env_int("LOCAL_MAX_TOKENS", 512))
     remote_max_tokens: int = field(default_factory=lambda: _env_int("REMOTE_MAX_TOKENS", 512))
     remote_timeout_s: float = field(default_factory=lambda: _env_float("REMOTE_TIMEOUT_S", 60.0))
+    # Worker thread utk eskalasi remote paralel (I/O-bound; tak berebut CPU dgn llama.cpp).
+    remote_concurrency: int = field(default_factory=lambda: _env_int("REMOTE_CONCURRENCY", 4))
 
     @property
     def allowed_models(self) -> list[str]:
         return [m.strip() for m in self.allowed_models_raw.split(",") if m.strip()]
 
     @property
+    def can_remote(self) -> bool:
+        """Kredensial remote tersedia (harness SELALU menginjeksinya saat scoring)."""
+        return bool(self.fireworks_api_key) and bool(self.allowed_models)
+
+    @property
     def can_escalate(self) -> bool:
-        return self.escalation_level > 0 and bool(self.fireworks_api_key) and bool(self.allowed_models)
+        return self.escalation_level > 0 and self.can_remote
 
 
 config = Config()

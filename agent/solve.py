@@ -48,6 +48,13 @@ _REMOTE_MAXTOK = {
     C.NER: 128, C.SUMMARISATION: 160, C.CODE_GEN: 384, C.CODE_DEBUG: 384,
 }
 
+# Rung eskalasi per level utk status 'unverifiable' (level 4 = semua kategori).
+# Diturunkan dari efisiensi marginal terukur, bukan intuisi — lihat eval/escalation-math.md.
+_LEVEL_CATEGORIES = {
+    2: {C.MATH, C.FACTUAL},
+    3: {C.MATH, C.FACTUAL, C.SENTIMENT, C.LOGICAL},
+}
+
 _ANSWER_LINE = re.compile(r"answer\s*[:=]\s*(.+?)\s*$", re.I | re.M)
 
 
@@ -55,6 +62,35 @@ def _last_answer_line(raw: str) -> Optional[str]:
     """Ambil isi baris 'Answer: ...' terakhir bila ada."""
     matches = _ANSWER_LINE.findall(raw or "")
     return matches[-1].strip() if matches else None
+
+
+# Coercion format GRATIS (nol token): ubah "salah format" jadi jawaban bersih sebelum
+# dinilai judge. Preamble ("Sure, here's...") melanggar constraint eksplisit (mis.
+# "exactly one sentence") dan menodai jawaban ringkas.
+_PREAMBLE = re.compile(
+    r"^(sure|okay|ok|certainly|of course|here(?:'s| is| are)\b[^:\n]*|the answer is)[,:.!—-]?\s*",
+    re.I)
+
+
+def _coerce(category: str, raw: str) -> str:
+    """Bersihkan jawaban per kategori; selalu kembalikan teks terbaik yang ada."""
+    text = (raw or "").strip()
+    if not text:
+        return text
+    if category in (C.CODE_GEN, C.CODE_DEBUG):
+        code = V.extract_code_block(text)
+        return code or text
+    stripped = text
+    for _ in range(3):  # preamble bisa bertumpuk: "Sure, here's the answer: ..."
+        nxt = _PREAMBLE.sub("", stripped, count=1).strip()
+        if nxt == stripped:
+            break
+        stripped = nxt
+    if category == C.LOGICAL:
+        ans = _last_answer_line(stripped)
+        if ans:
+            return ans
+    return stripped or text
 
 
 _RE_ANSWER = re.compile(r"ANSWER\s*:\s*(.+)", re.I)
@@ -86,6 +122,7 @@ class TaskResult:
     route: str = "local"          # local | local_verified | remote | deterministic | fallback
     remote_tokens: int = 0
     remote_model: str = ""
+    needs_escalation: bool = False  # kebijakan bilang escalate; eksekusinya deferred (run.py)
     meta: dict = field(default_factory=dict)
 
 
@@ -95,9 +132,21 @@ class Solver:
         self.remote = remote or Fireworks()
 
     # ---------- utilitas escalate ----------
+    def escalate(self, prompt: str, tr: TaskResult) -> bool:
+        """Eksekusi eskalasi remote utk task bertanda needs_escalation.
+
+        Dipanggil run.py — boleh dari worker thread (stateless per-call; tiap tr
+        berbeda). True bila berhasil & tr diperbarui; gagal = jawaban lokal bertahan.
+        """
+        return self._escalate(prompt, tr.category, tr)
+
     def _escalate(self, prompt: str, category: str, tr: TaskResult) -> bool:
-        """Coba jawab via remote; True bila berhasil & tr diperbarui."""
-        if not config.can_escalate:
+        """Coba jawab via remote; True bila berhasil & tr diperbarui.
+
+        Guard berbasis kredensial (bukan level): kebijakan level sudah ditegakkan
+        _decide; caller lain (tail-to-remote run.py) sah memakai remote di level 0.
+        """
+        if not config.can_remote:
             return False
         prefer = "code" if category in (C.CODE_GEN, C.CODE_DEBUG) else None
         model = self.remote.pick_model(prefer=prefer)
@@ -106,20 +155,34 @@ class Solver:
                                    max_tokens=_REMOTE_MAXTOK.get(category, config.remote_max_tokens))
         if res is None or not res.text:
             return False
-        tr.answer = res.text
+        answer = _coerce(category, res.text)
+        if not answer:
+            return False
+        tr.answer = answer
         tr.route = "remote"
         tr.remote_tokens = res.total_tokens
         tr.remote_model = res.model
         return True
 
-    def _decide(self, prompt: str, category: str, tr: TaskResult, status: str) -> bool:
-        """Kebijakan eskalasi terpadu berbasis ESCALATION_LEVEL.
+    def _decide(self, category: str, status: str) -> bool:
+        """Kebijakan eskalasi MURNI (tanpa eksekusi) berbasis ESCALATION_LEVEL (0..4).
+
+        Eksekusinya deferred: solve() hanya menandai needs_escalation; run.py yang
+        menjalankan solver.escalate() — paralel di thread pool, overlap dgn kerja
+        lokal task berikutnya (latensi remote tak lagi memblokir antrean lokal).
 
         status:
           verified     — konfirmasi deterministik INDEPENDEN lulus → jangan escalate
           verify_failed— cek independen GAGAL (mis. kode error) → sinyal presisi tinggi
           empty        — model lokal tak menghasilkan apa-apa
           unverifiable — tak ada cek independen (word-problem math, logical, factual, dst)
+
+        Urutan kategori per level BERBASIS DATA (eval v4 + Monte Carlo,
+        eval/escalation-math.md): efisiensi marginal ΔAcc/token = math ≈ factual
+        >> sentiment ≈ logical >> sisanya (lokal ~100%, escalate = rugi murni).
+        Catatan: factual menggantikan logical di rung pertama karena halusinasi
+        factual TAK terlihat verifikasi lokal, sedangkan error logical sebagian
+        sudah tertangkap jalur trap-routing classify.
 
         Catatan kalibrasi: kesepakatan model-dengan-dirinya (NL vs python buatan model)
         BUKAN 'verified' — model kecil confidently-consistent wrong. Hanya cek yang benar2
@@ -128,12 +191,17 @@ class Solver:
         lvl = config.escalation_level
         if status == "verified":
             return False
-        escalate = (
-            (lvl >= 1 and status in ("empty", "verify_failed"))
-            or (lvl >= 2 and status == "unverifiable" and category in C.TRAP_CATEGORIES)
-            or (lvl >= 3 and status == "unverifiable")
-        )
-        return escalate and self._escalate(prompt, category, tr)
+        if status in ("empty", "verify_failed"):
+            escalate = lvl >= 1
+        else:  # unverifiable
+            if lvl >= 4:
+                escalate = True
+            elif lvl >= 2:
+                allowed = _LEVEL_CATEGORIES[min(lvl, 3)]
+                escalate = category in allowed
+            else:
+                escalate = False
+        return escalate
 
     def _local(self, prompt: str, category: str, max_tokens: Optional[int] = None) -> str:
         return self.local.chat(prompt, system=_SYS.get(category, _DEFAULT_SYS),
@@ -163,29 +231,26 @@ class Solver:
         # Jawaban lokal terbaik: angka hasil eksekusi python bila ada, else NL.
         tr.answer = f"{computed:g}" if computed is not None else str(nl_answer).strip()
         status = "empty" if not tr.answer else "unverifiable"  # math word-problem = trap
-        if self._decide(prompt, C.MATH, tr, status):
-            return
+        tr.needs_escalation = self._decide(C.MATH, status)
         tr.route = "local"
 
     def _solve_code(self, prompt: str, category: str, tr: TaskResult) -> None:
         raw = self._local(prompt, category, max_tokens=config.local_max_tokens)
         code = V.extract_code_block(raw) or raw
-        tr.answer = raw.strip()
+        tr.answer = _coerce(category, raw)
         # Cek INDEPENDEN: kode harus benar2 di-load tanpa syntax error (eksekusi nyata).
         if not raw.strip():
             status = "empty"
         else:
             loadable = V.run_python(f"import ast\nast.parse({code!r})")
             status = "unverifiable" if loadable.ok else "verify_failed"
-        if self._decide(prompt, category, tr, status):
-            return
+        tr.needs_escalation = self._decide(category, status)
         tr.route = "local"
 
     def _solve_generic(self, prompt: str, category: str, tr: TaskResult) -> None:
-        tr.answer = self._local(prompt, category)
+        tr.answer = _coerce(category, self._local(prompt, category))
         status = "empty" if not tr.answer else "unverifiable"
-        if self._decide(prompt, category, tr, status):
-            return
+        tr.needs_escalation = self._decide(category, status)
         tr.route = "local"
 
     # ---------- entri ----------
