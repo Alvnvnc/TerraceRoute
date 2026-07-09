@@ -1,90 +1,36 @@
-# TerraceRoute — Token-Efficient Routing Agent (AMD ACT II, Track 1)
+# AMD Developer Hackathon (ACT II) — Submissions
 
-Agent **batch** yang menyelesaikan task natural-language dengan biaya token Fireworks
-**seminimal mungkin** (lokal = gratis), tanpa jatuh di bawah accuracy gate.
+Monorepo holding my submissions for the AMD Developer Hackathon (ACT II).
+Each track is a self-contained folder with its own README, code, and docs.
 
-> Aturan resmi terverifikasi ada di [`participant-guide.pdf`](participant-guide.pdf).
-> Rencana & strategi: [`plan-v2.md`](plan-v2.md). Log kalibrasi: [`submissions-log.md`](submissions-log.md).
+> 🇮🇩 Indonesian version: [`README.id.md`](README.id.md)
 
-## Kontrak harness (yang dinilai)
+## Tracks
 
-- Baca `/input/tasks.json` `[{task_id,prompt}]` → tulis `/output/results.json` `[{task_id,answer}]`, exit 0.
-- Env diinjeksi: `FIREWORKS_API_KEY`, `FIREWORKS_BASE_URL` (SEMUA call remote lewat sini),
-  `ALLOWED_MODELS` (dibaca runtime).
-- Scoring env: **4 GB RAM, 2 vCPU, CPU-only, 10 menit**. Token lokal = 0; ranking = total token
-  Fireworks (input+output) menaik. Accuracy gate via LLM-Judge; unseen prompt variants.
+| Track | Folder | Title | Status |
+|-------|--------|-------|--------|
+| 1 | [`track1/`](track1/) | **TerraceRoute** — token-efficient routing agent | ✅ Complete |
+| 2 | [`track2/`](track2/) | — | ⏳ Placeholder |
+| 3 | [`track3/`](track3/) | Unicorn — self-hosted AMD agent infrastructure | 📝 Planning |
 
-## Cara kerja (terrace routing)
+## Track 1 — TerraceRoute (highlight)
 
-Tiap task turun "teras" cek yang makin mahal, keluar sedini mungkin:
+A batch agent that answers natural-language tasks across 8 categories while spending
+**as few Fireworks API tokens as possible** — local inference is free, and the leaderboard
+ranks passing entries by ascending token count. A local 3B model plus **independent
+deterministic verification** (code execution, letter counting, arithmetic) reaches
+**~85–91% accuracy at zero API tokens**, escalating to the remote model only when a
+data-driven policy says the marginal accuracy is worth the token cost.
 
-```
-klasifikasi kategori (regex, gratis)
-  ├─ counting huruf ("berapa 'r' di strawberry")  → hitung Python (DETERMINISTIK, 0 token)
-  ├─ math    → solve lokal + Python hitung-ulang; word-problem = zona jebakan
-  ├─ code    → solve lokal + eksekusi cek syntax (verifikasi INDEPENDEN)
-  └─ lainnya → solve lokal (3B)
-        ↓ kebijakan eskalasi (knob ESCALATION_LEVEL)
-   verify-fail / lokal-kosong → escalate (lvl≥1)
-   kategori jebakan (math,logical) → escalate (lvl≥2)
-   apa pun yg tak terverifikasi   → escalate (lvl≥3)
-        ↓
-   remote: prompt TERSE (jawaban final saja) + cap max_tokens per kategori → hemat token
-```
+See [`track1/README.md`](track1/README.md) for the full architecture, evaluation, and
+build/run instructions.
 
-**Insight kunci** (dari kalibrasi sebelumnya): sinyal keyakinan internal model kecil
-(perplexity, self-consistency, "python buatan model sendiri") **anti-korelasi** dengan
-kebenaran — model *confidently-consistent wrong*. Maka yang dihitung "verified" hanyalah cek
-**benar-benar independen** (eksekusi kode, hitung huruf), bukan model menyetujui dirinya.
-Selebihnya di-escalate sesuai anggaran gate.
-
-## Struktur
+## Layout
 
 ```
-agent/
-  run.py        # entrypoint batch: I/O, watchdog, progressive atomic write, ringkas token
-  solve.py      # terrace per-kategori + kebijakan eskalasi terpadu
-  classify.py   # klasifikasi 8 kategori (regex, gratis)
-  verify.py     # verifikasi deterministik: aritmetika, eksekusi Python, counting
-  local_llm.py  # model lokal: ollama (dev) / llama-cpp in-process (prod)
-  fireworks.py  # escalation client (baca ALLOWED_MODELS runtime, semua via BASE_URL)
-  config.py     # semua dari env; http.py = urllib (tanpa dependency jaringan)
-Dockerfile.agent          # multi-stage, CPU-only, ~1.84 GB compressed
-scripts/build_and_push.sh # build linux/amd64 + push registri publik
-eval/practice_tasks.json  # 9 practice tasks dari guide (bukan set penilaian)
+README.md        ← you are here (repo landing)
+README.id.md     ← Indonesian landing
+track1/          ← Track 1 submission (complete)
+track2/          ← Track 2 (placeholder)
+track3/          ← Track 3 (placeholder)
 ```
-
-## Menjalankan
-
-### Dev (host Ollama, cepat)
-```bash
-ollama pull qwen2.5:3b-instruct
-INPUT_PATH=eval/practice_tasks.json OUTPUT_PATH=/tmp/results.json \
-LOCAL_BACKEND=ollama LOCAL_MODEL=qwen2.5:3b-instruct ESCALATION_LEVEL=0 \
-python3 -m agent.run
-```
-
-### Container (persis seperti scoring)
-```bash
-docker build -f Dockerfile.agent -t terraceroute:test .
-mkdir -p in out && cp eval/practice_tasks.json in/tasks.json
-docker run --rm --cpus=2 --memory=4g -v $PWD/in:/input:ro -v $PWD/out:/output terraceroute:test
-```
-Escalation live: tambah `-e FIREWORKS_API_KEY=... -e FIREWORKS_BASE_URL=... -e ALLOWED_MODELS=...`
-dan `-e ESCALATION_LEVEL=2`.
-
-### Submit
-```bash
-REGISTRY=ghcr.io/USERNAME ./scripts/build_and_push.sh v0     # push publik
-# paste ghcr.io/USERNAME/terraceroute:v0 ke form lablab.ai
-```
-Lalu kalibrasi lewat leaderboard — lihat [`submissions-log.md`](submissions-log.md).
-
-## Status tervalidasi (2026-07-10)
-
-- Container build & jalan di **2 vCPU / 4 GB CPU-only**; schema selalu valid; exit 0.
-- Zero-API (level 0), escalation (level 2), input malformed (→ `[]`, exit 0) semua teruji.
-- Counting deterministik (strawberry→3), math extraction, terse remote (134 tok/2 escalate) OK.
-- **Catatan waktu:** ~7–8 dtk/task CPU-only → set besar (>~60 task) bisa kena watchdog 510s;
-  lever: kecilkan `LOCAL_MAX_TOKENS`, model lebih kecil utk kategori mudah, atau escalate lebih.
-- **Belum:** `ALLOWED_MODELS` resmi launch-day (baca runtime) & kalibrasi threshold via leaderboard.

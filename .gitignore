@@ -1,7 +1,32 @@
+# --- Python ---
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- Virtual envs ---
 .venv/
 venv/
+env/
+
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+
+# --- Model weights (downloaded at build time, never committed) ---
+*.gguf
+models/
+
+# --- Run artifacts / outputs ---
 artifacts/*.json
 !artifacts/.gitkeep
+track*/output/
+track*/artifacts/*.json
+!track*/artifacts/.gitkeep
+
+# --- OS / editor cruft ---
+.DS_Store
+*.swp
+.idea/
+.vscode/

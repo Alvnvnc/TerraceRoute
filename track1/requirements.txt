@@ -1,0 +1,6 @@
+# TerraceRoute agent — runtime dependencies (CPU-only).
+# Networking uses urllib (stdlib), so no httpx/requests needed.
+# The local model runs in-process via llama-cpp-python; numpy is its dependency.
+llama-cpp-python==0.3.2
+numpy<2
+huggingface_hub==0.25.2
