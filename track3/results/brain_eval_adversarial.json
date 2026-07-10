@@ -1,5 +1,5 @@
 {
-  "elapsed_s": 52.0,
+  "elapsed_s": 50.8,
   "endpoint": "http://localhost:11434",
   "available_models": [
     "terracegate-planner:latest",
@@ -11,7 +11,7 @@
     "n": 20,
     "op_accuracy": 1.0,
     "args_accuracy": 1.0,
-    "tokens_per_s_median": 56.7,
+    "tokens_per_s_median": 57.0,
     "misses": []
   },
   "gate": {

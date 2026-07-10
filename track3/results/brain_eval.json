@@ -1,7 +1,8 @@
 {
-  "elapsed_s": 74.3,
+  "elapsed_s": 76.9,
   "endpoint": "http://localhost:11434",
   "available_models": [
+    "terracegate-planner:latest",
     "gemma3:12b",
     "qwen2.5:3b-instruct"
   ],
@@ -10,7 +11,7 @@
     "n": 34,
     "op_accuracy": 1.0,
     "args_accuracy": 1.0,
-    "tokens_per_s_median": 57.1,
+    "tokens_per_s_median": 56.9,
     "misses": []
   },
   "gate": {

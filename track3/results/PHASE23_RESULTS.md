@@ -112,6 +112,12 @@ would make them agree and destroy the signal.
 
 ## Reproduce
 
+Re-run on 2026-07-10 (later the same day) against the exact committed code
+(`agent/brain/intent.py` sha256 `6c880aee…`, identical local vs box) reproduced
+every headline number bit-for-bit — base **100 / 100 / 0% / 0%**, adversarial
+**100 / 100 / 0% / 0%** — because the planner runs at temperature 0 / seed 42.
+`ollama list` also now shows `terracegate-planner:latest`, the pinned Modelfile.
+
 ```bash
 # on the AMD box, with Ollama serving gemma3:12b + qwen2.5:3b-instruct
 ollama create terracegate-planner -f models/Modelfile.planner
