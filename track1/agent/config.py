@@ -64,6 +64,11 @@ class Config:
     # --- Token caps (save ranking; input + output both count) ---
     local_max_tokens: int = field(default_factory=lambda: _env_int("LOCAL_MAX_TOKENS", 512))
     remote_max_tokens: int = field(default_factory=lambda: _env_int("REMOTE_MAX_TOKENS", 512))
+    # Sent to Fireworks as reasoning_effort ("" = never send). Measured 2026-07-11:
+    # all current serverless models think by default; "none" collapses answers to
+    # 2-7 completion tokens on glm/deepseek/kimi. Models that reject the param are
+    # auto-detected (400) and called without it.
+    reasoning_effort: str = field(default_factory=lambda: _env("REASONING_EFFORT", "none"))
     remote_timeout_s: float = field(default_factory=lambda: _env_float("REMOTE_TIMEOUT_S", 60.0))
     # Worker threads for parallel remote escalation (I/O-bound; no CPU contention with llama.cpp).
     remote_concurrency: int = field(default_factory=lambda: _env_int("REMOTE_CONCURRENCY", 4))

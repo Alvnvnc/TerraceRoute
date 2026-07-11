@@ -30,6 +30,10 @@ def post_json(url: str, payload: dict, headers: Optional[dict] = None,
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, OSError) as exc:
+            # 4xx is not transient (bad param / bad model) — surface it immediately so
+            # the caller can adapt the payload instead of burning retries.
+            if isinstance(exc, urllib.error.HTTPError) and 400 <= exc.code < 500:
+                raise
             last_exc = exc
             if attempt < retries:
                 time.sleep(1.0 + 2.0 * attempt)

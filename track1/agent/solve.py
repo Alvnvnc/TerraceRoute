@@ -42,9 +42,12 @@ _SYS_REMOTE = {
     C.CODE_GEN: "Output only the code. No explanation, no markdown fences.",
     C.CODE_DEBUG: "Output only the corrected code. No explanation, no markdown fences.",
 }
-# Per-category remote output token caps (save ranking).
+# Per-category remote output token caps (save ranking). LOGICAL is 128 because
+# reasoning tokens count toward max_tokens on gpt-oss: at 64 its "low" thinking
+# (~50 tokens) starves the visible answer (finish=length, empty content); at 128
+# every probe puzzle finished clean (measured 2026-07-11).
 _REMOTE_MAXTOK = {
-    C.SENTIMENT: 8, C.MATH: 32, C.FACTUAL: 96, C.LOGICAL: 64,
+    C.SENTIMENT: 8, C.MATH: 32, C.FACTUAL: 96, C.LOGICAL: 128,
     C.NER: 128, C.SUMMARISATION: 160, C.CODE_GEN: 384, C.CODE_DEBUG: 384,
 }
 
@@ -54,6 +57,44 @@ _LEVEL_CATEGORIES = {
     2: {C.MATH, C.FACTUAL},
     3: {C.MATH, C.FACTUAL, C.SENTIMENT, C.LOGICAL},
 }
+
+# Ranked remote-model preference per category — substring matches against the
+# runtime ALLOWED_MODELS (never hardcoded IDs). Measured on the 2026-07 serverless
+# catalog with reasoning_effort=none (fw_probe3 + stratified eval): glm-5p2 4/4
+# correct at the fewest total tokens; deepseek-v4-pro 4/4 (slightly chattier on
+# math); kimi-k2p6 answered math WRONG with thinking off → kimi is last for
+# math-like work. A "code"/"coder" model is preferred for code tasks if the graders
+# ever inject one.
+#
+# LOGICAL is the exception: with thinking fully off every model pattern-matches
+# puzzles wrong (glm@none failed "Ben owns the dog → who owns the cat"), so logical
+# escalations run with reasoning_effort=low on gpt-oss first — its "low" is enough
+# for textbook puzzles, its reasoning stays out of the visible answer ("Dita.",
+# 22 completion tokens), and it can't do "none" anyway. glm@low leaks its
+# step-by-step INTO the answer and hits the 64-token cap (truncated → discarded),
+# so non-gpt-oss fallbacks keep effort=none and lean on the truncation guard.
+_PREFER_CODE = ("code", "coder", "deepseek", "glm", "kimi")
+_PREFER_MATH = ("glm", "deepseek", "gpt-oss")
+_PREFER_LOGICAL = ("gpt-oss", "glm", "deepseek")
+_PREFER_GENERAL = ("glm", "deepseek", "kimi")
+
+
+def _model_prefs(category: str) -> tuple[str, ...]:
+    if category in (C.CODE_GEN, C.CODE_DEBUG):
+        return _PREFER_CODE
+    if category == C.MATH:
+        return _PREFER_MATH
+    if category == C.LOGICAL:
+        return _PREFER_LOGICAL
+    return _PREFER_GENERAL
+
+
+def _remote_effort(category: str, model: str) -> Optional[str]:
+    """Per-category reasoning effort ('' falls back to config): logical puzzles get
+    'low' on gpt-oss only (see the block comment above)."""
+    if category == C.LOGICAL and "gpt-oss" in (model or ""):
+        return "low"
+    return None
 
 _ANSWER_LINE = re.compile(r"answer\s*[:=]\s*(.+?)\s*$", re.I | re.M)
 
@@ -148,12 +189,17 @@ class Solver:
         """
         if not config.can_remote:
             return False
-        prefer = "code" if category in (C.CODE_GEN, C.CODE_DEBUG) else None
-        model = self.remote.pick_model(prefer=prefer)
+        model = self.remote.pick_model(prefer=_model_prefs(category))
         res = self.remote.generate(prompt, system=_SYS_REMOTE.get(category, _DEFAULT_SYS),
                                    model=model, temperature=0.0,
-                                   max_tokens=_REMOTE_MAXTOK.get(category, config.remote_max_tokens))
+                                   max_tokens=_REMOTE_MAXTOK.get(category, config.remote_max_tokens),
+                                   reasoning_effort=_remote_effort(category, model or ""))
         if res is None or not res.text:
+            return False
+        if res.truncated:
+            # finish_reason=length on a reasoning model = mid-thinking garbage
+            # ("The user wants me to..."). Submitting it over the local answer is a
+            # guaranteed accuracy loss — keep what we have.
             return False
         answer = _coerce(category, res.text)
         if not answer:
@@ -259,11 +305,15 @@ class Solver:
         tr = TaskResult(task_id=task_id, answer="", category=category)
 
         # Deterministic short-circuit: letter counting (a universal LLM blind spot).
-        cnt = V.try_count_letter(prompt)
-        if cnt is not None:
-            tr.answer = str(cnt)
-            tr.route = "deterministic"
-            return tr
+        # Prose categories only: code prompts legitimately contain "x in lst" /
+        # "how many times the character c appears in the string s" (eval v5 tasks
+        # 92 & 122) and must reach the code solver, not the counter.
+        if category not in (C.CODE_GEN, C.CODE_DEBUG):
+            cnt = V.try_count_letter(prompt)
+            if cnt is not None:
+                tr.answer = str(cnt)
+                tr.route = "deterministic"
+                return tr
 
         try:
             if category == C.MATH:

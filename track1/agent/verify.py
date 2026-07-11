@@ -89,12 +89,18 @@ _COUNT_B = re.compile(
     r"\b([a-z])(?:['’]s|s)?\s+(?:are\s+|is\s+|appears?\s+|occur\w*\s+|there\s+)*"
     r"in\b(?:\s+the)?(?:\s+word)?\s+['\"]?([a-z]{2,})['\"]?", re.I | re.S)
 _COUNT_TRIGGER = ("how many", "number of", "count ")
+# Code prompts ("def f(lst): ... for x in lst", "write a function that returns how
+# many times c appears in the string s") match the count patterns as false positives.
+# solve() already gates by category; this guard also protects misclassified prompts.
+_COUNT_CODE = re.compile(r"```|\bdef \w+\(|\bfunction\b|\breturn\b|=>|\bclass \w+", re.I)
 
 
 def try_count_letter(prompt: str) -> Optional[int]:
     """Detect 'how many of letter X in WORD' → count deterministically (case-insensitive)."""
     low = prompt.lower()
     if not any(t in low for t in _COUNT_TRIGGER):
+        return None
+    if _COUNT_CODE.search(prompt):
         return None
     m = _COUNT_A.search(prompt) or _COUNT_B.search(prompt)
     if not m:

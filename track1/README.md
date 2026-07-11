@@ -26,9 +26,9 @@ Each task walks down a "terrace" of increasingly expensive checks and exits as e
 
 ```
 classify category (regex, free)
-  ├─ letter counting ("how many r in strawberry") → count in Python  (DETERMINISTIC, 0 tokens)
+  ├─ letter counting ("how many r in strawberry"; non-code prompts only) → count in Python  (DETERMINISTIC, 0 tokens)
   ├─ math    → solve locally + recompute with Python
-  ├─ code    → solve locally + execute to check it runs   (INDEPENDENT verification)
+  ├─ code    → solve locally + `ast.parse` syntax check in a subprocess  (catches unloadable code)
   └─ other   → solve locally (3B model)
         ↓ escalation policy (ESCALATION_LEVEL knob, 0..4)
    verify-failed / empty local answer → escalate (level ≥ 1)
@@ -40,8 +40,8 @@ classify category (regex, free)
 **Key insight (from calibration).** A small model's *internal* confidence signals —
 perplexity, self-consistency, even "Python it wrote to check itself" — **anti-correlate**
 with correctness: the model is often *confidently, consistently wrong*. So the only thing
-that counts as **verified** is a genuinely **independent** check (executing code, counting
-letters, arithmetic we parse ourselves), never the model agreeing with itself. Everything
+that counts as **verified** is a genuinely **independent** check (a syntax check on generated
+code, counting letters, arithmetic we parse ourselves), never the model agreeing with itself. Everything
 else is escalated according to the token budget the accuracy gate allows.
 
 ## Escalation ladder (data-driven)

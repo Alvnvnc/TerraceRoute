@@ -29,9 +29,9 @@ Setiap tugas menuruni "teras" pemeriksaan yang makin mahal dan keluar sedini mun
 
 ```
 klasifikasi kategori (regex, gratis)
-  ├─ penghitungan huruf ("berapa 'r' pada strawberry") → hitung di Python  (DETERMINISTIK, 0 token)
+  ├─ penghitungan huruf ("berapa 'r' pada strawberry"; hanya prompt non-code) → hitung di Python  (DETERMINISTIK, 0 token)
   ├─ math    → selesaikan lokal + hitung ulang dengan Python
-  ├─ code    → selesaikan lokal + eksekusi untuk memastikan berjalan   (verifikasi INDEPENDEN)
+  ├─ code    → selesaikan lokal + cek sintaks `ast.parse` di subprocess  (menangkap kode yang gagal dimuat)
   └─ lainnya → selesaikan lokal (model 3B)
         ↓ kebijakan eskalasi (knob ESCALATION_LEVEL, 0..4)
    verifikasi gagal / jawaban lokal kosong → eskalasi (level ≥ 1)
@@ -44,8 +44,8 @@ klasifikasi kategori (regex, gratis)
 konsistensi-diri, bahkan "kode Python yang ia tulis untuk memeriksa dirinya sendiri" —
 **berkorelasi negatif** dengan kebenaran: model kerap *salah dengan penuh keyakinan dan
 konsisten*. Karena itu, satu-satunya yang dianggap **terverifikasi** adalah pemeriksaan yang
-benar-benar **independen** (mengeksekusi kode, menghitung huruf, aritmetika yang kita urai
-sendiri), bukan model yang menyetujui dirinya sendiri. Selebihnya dieskalasi sesuai anggaran
+benar-benar **independen** (cek sintaks pada kode yang dihasilkan, menghitung huruf,
+aritmetika yang kita urai sendiri), bukan model yang menyetujui dirinya sendiri. Selebihnya dieskalasi sesuai anggaran
 token yang diizinkan oleh gerbang akurasi.
 
 ## Tangga Eskalasi (berbasis data)
