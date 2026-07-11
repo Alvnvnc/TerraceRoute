@@ -24,10 +24,11 @@ def _noisy(level: int, seed: int) -> bytes:
 class PlanSamplesTest(unittest.TestCase):
     def test_static_clip_gets_few_frames(self) -> None:
         thumbs = [_flat(100) for _ in range(60)]  # 30s tripod shot, zero motion
-        times, n_scenes, motion = _plan_samples(thumbs, 2.0, config.max_frames)
+        times, scenes, n_scenes, motion = _plan_samples(thumbs, 2.0, config.max_frames)
         self.assertEqual(n_scenes, 1)
         self.assertLessEqual(len(times), config.min_frames)
         self.assertGreaterEqual(len(times), 3)
+        self.assertEqual(scenes, [0] * len(times))
 
     def test_multi_scene_clip_gets_more_frames(self) -> None:
         # Three hard cuts: black -> gray -> white -> black, small motion within scenes.
@@ -35,18 +36,21 @@ class PlanSamplesTest(unittest.TestCase):
                   + [_noisy(110, i) for i in range(20)]
                   + [_noisy(200, i) for i in range(20)]
                   + [_noisy(60, i) for i in range(20)])
-        times, n_scenes, _ = _plan_samples(thumbs, 2.0, config.max_frames)
-        static_times, _, _ = _plan_samples([_flat(100)] * 80, 2.0, config.max_frames)
+        times, scenes, n_scenes, _ = _plan_samples(thumbs, 2.0, config.max_frames)
+        static_times, _, _, _ = _plan_samples([_flat(100)] * 80, 2.0, config.max_frames)
         self.assertEqual(n_scenes, 4)
         self.assertGreater(len(times), len(static_times))
-        # Every scene contributes at least one timestamp (10s segments at 2 fps).
-        for lo, hi in ((0, 10), (10, 20), (20, 30), (30, 40)):
-            self.assertTrue(any(lo <= t < hi for t in times),
-                            f"no frame from segment {lo}-{hi}s in {times}")
+        # Every scene contributes at least one timestamp (10s segments at 2 fps),
+        # and the scene ids track the segment each pick came from.
+        for sc, (lo, hi) in enumerate(((0, 10), (10, 20), (20, 30), (30, 40))):
+            hits = [t for t, s in zip(times, scenes) if lo <= t < hi]
+            self.assertTrue(hits, f"no frame from segment {lo}-{hi}s in {times}")
+            self.assertTrue(all(s == sc for t, s in zip(times, scenes)
+                                if lo <= t < hi))
 
     def test_respects_max_frames_cap(self) -> None:
         thumbs = [_noisy(20 + (i // 6) * 25 % 200, i) for i in range(96)]  # cut every 3s
-        times, _, _ = _plan_samples(thumbs, 2.0, 8)
+        times, _, _, _ = _plan_samples(thumbs, 2.0, 8)
         self.assertLessEqual(len(times), 8)
 
 
@@ -75,6 +79,38 @@ class PayloadCapsTest(unittest.TestCase):
         self.assertGreaterEqual(len(clip.frames_b64), 3)
 
 
+class SafeStemTest(unittest.TestCase):
+    def test_path_escape_and_collisions(self) -> None:
+        from .ingest import _safe_stem
+        evil = _safe_stem("../../etc/passwd")
+        self.assertNotIn("/", evil)
+        self.assertNotIn("..", evil)
+        # Two ids that sanitize identically stay distinct via the hash suffix.
+        self.assertNotEqual(_safe_stem("a/b"), _safe_stem("a_b"))
+        self.assertEqual(_safe_stem("clip-1"), _safe_stem("clip-1"))
+
+
+class VerifierFailClosedTest(unittest.TestCase):
+    def test_unscored_styles_are_flagged_not_passed(self) -> None:
+        from .pipeline import _verdict_problems
+        verdicts = {"formal": (0.9, 0.9, ""), "sarcastic": (0.5, 0.9, "be drier")}
+        problems = _verdict_problems(
+            verdicts, ["formal", "sarcastic", "humorous_tech"])
+        self.assertNotIn("formal", problems)          # validly scored + passing
+        self.assertEqual(problems["sarcastic"], "be drier")  # scored + failing
+        self.assertIn("humorous_tech", problems)      # never scored → unverified
+        self.assertIn("verified", problems["humorous_tech"])
+
+    def test_invalid_scores_do_not_count_as_scored(self) -> None:
+        from .pipeline import _parse_json
+        self.assertEqual(_parse_json('[1,2,3]'), {})   # list is not a caption map
+        self.assertEqual(_parse_json('"x"'), {})
+        from .pipeline import _str_val
+        self.assertEqual(_str_val({"formal": None}, "formal"), "")
+        self.assertEqual(_str_val({"formal": 42}, "formal"), "")
+        self.assertEqual(_str_val({"formal": " ok "}, "formal"), "ok")
+
+
 class GraphGapsTest(unittest.TestCase):
     def test_gap_signals(self) -> None:
         from .pipeline import _graph_gaps
@@ -93,6 +129,10 @@ class GraphGapsTest(unittest.TestCase):
         # Timeline stopping at the clip's first half is a gap.
         half = dict(healthy, timeline=[{"t": "0-10s", "event": "cat walks"}])
         self.assertTrue(any("second half" in g for g in _graph_gaps(half, clip)))
+        # "0-30s" is a RANGE covering the whole clip — the range end counts,
+        # not the first number found.
+        full_range = dict(healthy, timeline=[{"t": "0-30s", "event": "cat walks"}])
+        self.assertEqual(_graph_gaps(full_range, clip), [])
 
 
 if __name__ == "__main__":

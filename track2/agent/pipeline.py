@@ -34,19 +34,27 @@ _NUM = re.compile(r"\d+(?:\.\d+)?")
 
 
 def _parse_json(text: str) -> dict:
-    """Best-effort JSON object extraction (models sometimes wrap it in prose/fences)."""
+    """Best-effort JSON OBJECT extraction (models sometimes wrap it in prose/fences,
+    or return a list/scalar — anything that is not a dict is treated as no output)."""
     if not text:
         return {}
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        m = _JSON_BLOCK.search(text)
-        if m:
-            try:
-                return json.loads(m.group(0))
-            except json.JSONDecodeError:
-                pass
+    for candidate in (text, m.group(0) if (m := _JSON_BLOCK.search(text)) else ""):
+        if not candidate:
+            continue
+        try:
+            obj = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return obj
     return {}
+
+
+def _str_val(parsed: dict, key: str) -> str:
+    """A string field from model JSON — non-strings (null, numbers, nested objects)
+    become empty rather than leaking 'None'/'42' into a scored caption."""
+    v = parsed.get(key, "")
+    return v.strip() if isinstance(v, str) else ""
 
 
 def _caption_schema(styles: list[str]) -> dict:
@@ -138,7 +146,7 @@ def _labels(clip: Clip, idx: list[int] | None = None) -> list[str]:
 
 # --- Stage 1: temporal evidence graph -------------------------------------------------
 
-def _evidence(clip: Clip) -> tuple[dict, str]:
+def _evidence(clip: Clip, budget_s: float = 0.0) -> tuple[dict, str]:
     """ONE VLM call: frames → timestamped evidence graph. Returns (graph, serialized).
     On unparseable output the raw text still serves as (weaker) caption evidence."""
     prompt = (
@@ -155,7 +163,8 @@ def _evidence(clip: Clip) -> tuple[dict, str]:
     )
     out = vlm.chat(prompt, images_b64=clip.frames_b64, image_labels=_labels(clip),
                    temperature=0.2, max_tokens=config.evidence_max_tokens,
-                   json_mode=True, json_schema=_EVIDENCE_SCHEMA)
+                   json_mode=True, json_schema=_EVIDENCE_SCHEMA,
+                   budget_s=budget_s or None)
     graph = _parse_json(out or "")
     if graph:
         return graph, json.dumps(graph, ensure_ascii=False)
@@ -180,8 +189,10 @@ def _graph_gaps(graph: dict, clip: Clip) -> list[str]:
     unc = [str(u) for u in graph.get("uncertainties") or []]
     if len(unc) >= 3:
         gaps.append(f"{len(unc)} uncertainties: " + "; ".join(unc[:3]))
-    ts = [float(m.group()) for e in graph.get("timeline") or []
-          if isinstance(e, dict) and (m := _NUM.search(str(e.get("t", ""))))]
+    # A "t" like "0-30s" is a RANGE — coverage is judged by the largest number in
+    # any entry, not the first one found.
+    ts = [float(x) for e in graph.get("timeline") or [] if isinstance(e, dict)
+          for x in _NUM.findall(str(e.get("t", "")))]
     if clip.duration_s > 8 and ts and max(ts) < 0.5 * clip.duration_s:
         gaps.append("timeline does not cover the second half of the clip")
     return gaps
@@ -189,7 +200,8 @@ def _graph_gaps(graph: dict, clip: Clip) -> list[str]:
 
 # --- Stage 2: stylize ------------------------------------------------------------------
 
-def _stylize(evidence: str, req_styles: list[str]) -> dict[str, str]:
+def _stylize(evidence: str, req_styles: list[str],
+             budget_s: float = 0.0) -> dict[str, str]:
     """ONE structured call produces every requested style from the same graph."""
     cards = "\n\n".join(f"### {s}\n{S.CARDS[s]}" for s in req_styles if s in S.CARDS)
     schema = ", ".join(f'"{s}": "..."' for s in req_styles)
@@ -205,16 +217,42 @@ def _stylize(evidence: str, req_styles: list[str]) -> dict[str, str]:
         f"Reply with ONLY a JSON object: {{{schema}}}"
     )
     out = vlm.chat(prompt, temperature=0.7, max_tokens=config.stylize_max_tokens,
-                   json_mode=True, json_schema=_caption_schema(req_styles))
+                   json_mode=True, json_schema=_caption_schema(req_styles),
+                   budget_s=budget_s or None)
     parsed = _parse_json(out or "")
-    return {s: str(parsed.get(s, "")).strip() for s in req_styles}
+    return {s: _str_val(parsed, s) for s in req_styles}
 
 
 # --- Stage 3: verification -------------------------------------------------------------
 
-def _check(clip: Clip, captions: dict[str, str]) -> dict[str, str]:
+def _checker_frame_idx(clip: Clip, k: int) -> list[int]:
+    """Frames the checker sees: one representative per detected scene first (a short
+    scene the adaptive sampler found must not vanish from verification), then fill
+    the remaining slots with an even temporal spread."""
+    n = len(clip.frames_b64)
+    if n <= k:
+        return list(range(n))
+    scenes = clip.frame_scenes if len(clip.frame_scenes) == n else [0] * n
+    by_scene: dict[int, list[int]] = {}
+    for i, sc in enumerate(scenes):
+        by_scene.setdefault(sc, []).append(i)
+    idx = [members[len(members) // 2] for _, members in sorted(by_scene.items())]
+    if len(idx) > k:  # more scenes than slots: keep an even spread over the scenes
+        idx = [idx[j] for j in _spread_idx(len(idx), k)]
+    for i in _spread_idx(n, k):
+        if len(idx) >= k:
+            break
+        if i not in idx:
+            idx.append(i)
+    return sorted(set(idx))
+
+
+def _check(clip: Clip, captions: dict[str, str],
+           budget_s: float = 0.0) -> dict[str, tuple[float, float, str]]:
     """Cross-family checker (qwen2.5vl vs gemma3): score each caption on the judge's own
-    rubric, grounded in the actual frames. Returns style -> feedback for failures only."""
+    rubric, grounded in the actual frames. Returns style -> (accuracy, style_match, hint)
+    for VALIDLY SCORED styles only — a style the checker failed to score is missing from
+    the result, and the caller treats it as unverified (fail-closed), never as passed."""
     cap_json = json.dumps(captions, ensure_ascii=False)
     prompt = (
         "You are a strict caption judge. You see frames from a video clip and candidate "
@@ -228,32 +266,51 @@ def _check(clip: Clip, captions: dict[str, str]) -> dict[str, str]:
         "accuracy (number), style_match (number), hint (write an actual one-line fix "
         "in your own words, or an empty string when both scores are 0.7+)."
     )
-    idx = _spread_idx(len(clip.frames_b64), config.checker_frames)
+    idx = _checker_frame_idx(clip, config.checker_frames)
     out = vlm.chat(prompt, images_b64=[clip.frames_b64[i] for i in idx],
                    image_labels=_labels(clip, idx), model=config.checker_model,
                    temperature=0.0, max_tokens=450, json_mode=True,
-                   json_schema=_verdict_schema(list(captions)), allow_fireworks=False)
+                   json_schema=_verdict_schema(list(captions)), allow_fireworks=False,
+                   budget_s=budget_s or None)
     verdicts = _parse_json(out or "")
-    feedback: dict[str, str] = {}
+    scored: dict[str, tuple[float, float, str]] = {}
     for style, v in verdicts.items():
         if style not in captions or not isinstance(v, dict):
             continue
         try:
-            acc = float(v.get("accuracy", 1.0))
-            sm = float(v.get("style_match", 1.0))
+            acc = float(v.get("accuracy"))
+            sm = float(v.get("style_match"))
         except (TypeError, ValueError):
             continue
+        if not (0.0 <= acc <= 1.0 and 0.0 <= sm <= 1.0):
+            continue  # 42, -1 etc. are checker glitches, not scores
+        hint = v.get("hint")
+        scored[style] = (acc, sm, hint.strip() if isinstance(hint, str) else "")
+    return scored
+
+
+def _verdict_problems(verdicts: dict[str, tuple[float, float, str]],
+                      styles: list[str]) -> dict[str, str]:
+    """Fail-closed translation of checker verdicts: low scores get the hint, styles
+    the checker did not validly score get an explicit 'unverified' repair reason."""
+    problems: dict[str, str] = {}
+    for s in styles:
+        if s not in verdicts:
+            problems[s] = ("caption could not be independently verified — rewrite it "
+                           "strictly from what is visible in the frames")
+            continue
+        acc, sm, hint = verdicts[s]
         if acc < 0.7 or sm < 0.7:
-            hint = str(v.get("hint") or "").strip()
             if hint in ("", "...", "…"):  # models sometimes echo the schema placeholder
                 hint = (f"accuracy={acc:.1f} style_match={sm:.1f} — improve grounding "
                         "in the visible content and match the requested tone")
-            feedback[style] = hint[:200]
-    return feedback
+            problems[s] = hint[:200]
+    return problems
 
 
 def _regenerate(clip: Clip, evidence: str, captions: dict[str, str],
-                problems: dict[str, str], gaps: list[str]) -> dict[str, str]:
+                problems: dict[str, str], gaps: list[str],
+                budget_s: float = 0.0) -> dict[str, str]:
     """Repair every flagged style in one frame-grounded, schema-constrained call."""
     styles = list(problems)
     cards = "\n\n".join(f"### {style}\n{S.CARDS.get(style, '')}" for style in styles)
@@ -274,37 +331,48 @@ def _regenerate(clip: Clip, evidence: str, captions: dict[str, str],
     )
     out = vlm.chat(prompt, images_b64=clip.frames_b64, image_labels=_labels(clip),
                    temperature=0.4, max_tokens=config.stylize_max_tokens, json_mode=True,
-                   json_schema=_caption_schema(styles), prefer_fireworks=True)
+                   json_schema=_caption_schema(styles), prefer_fireworks=True,
+                   budget_s=budget_s or None)
     parsed = _parse_json(out or "")
-    return {style: str(parsed.get(style, "")).strip() for style in styles}
+    return {style: _str_val(parsed, style) for style in styles}
 
 
 # --- Orchestration ---------------------------------------------------------------------
 
 def process_clip(task_id: str, video_url: str, req_styles: list[str],
                  budget_s: float) -> ClipResult:
-    """Full pipeline for one clip within a soft time budget. Never raises."""
+    """Full pipeline for one clip within a soft time budget. Never raises.
+
+    Every stage receives a hard slice of the remaining budget (network calls stop
+    retrying at their deadline), so one hung provider degrades ONE stage of ONE clip
+    instead of starving the whole run until the watchdog fires."""
     start = time.perf_counter()
     res = ClipResult(task_id=task_id)
 
     def left() -> float:
         return budget_s - (time.perf_counter() - start)
 
-    # Stage 0: adaptive ingest (fewest frames when the budget is tight).
+    # Stage 0: adaptive ingest (fewest frames when the budget is tight); ingest may
+    # spend at most ~40% of the clip budget so the model stages always get their turn.
     clip = ingest(task_id, video_url,
-                  max_frames=(0 if budget_s > 60 else config.min_frames))
+                  max_frames=(0 if budget_s > 60 else config.min_frames),
+                  budget_s=max(15.0, min(left() * 0.4, 120.0)))
     if clip.ok:
         print(f"[pipeline] {task_id} sampler={clip.sampler} frames={len(clip.frames_b64)} "
               f"scenes={clip.n_scenes} motion={clip.motion:.1f}", file=sys.stderr)
 
     # Stage 1: evidence graph. Without frames there is no evidence — last-resort path.
-    if clip.ok:
-        res.evidence, res.description = _evidence(clip)
+    # Reserve enough of the budget that stylize (the only mandatory model call left)
+    # still fits behind it.
+    if clip.ok and left() > 12.0:
+        res.evidence, res.description = _evidence(
+            clip, budget_s=max(10.0, left() - 15.0))
     res.gaps = _graph_gaps(res.evidence, clip) if clip.ok else []
 
     # Stage 2: stylize (one structured call, all styles from the same graph).
-    if res.description:
-        res.captions = _stylize(res.description, req_styles)
+    if res.description and left() > 5.0:
+        res.captions = _stylize(res.description, req_styles,
+                                budget_s=max(8.0, left() - 5.0))
         res.routes = {s: "stylized" for s in req_styles}
 
     # Stage 3a: free deterministic lint (always runs — it costs nothing).
@@ -313,14 +381,21 @@ def process_clip(task_id: str, video_url: str, req_styles: list[str],
         p = S.lint(s, res.captions.get(s, ""))
         if p:
             problems[s] = p
+    hard_flagged = set(problems)  # styles with a concrete, deterministic defect
 
-    # Stage 3b: cross-family checker — only when the budget allows (degradation ladder).
+    # Stage 3b: cross-family checker — only when the budget allows (degradation
+    # ladder). FAIL-CLOSED: a style the checker did not validly score counts as
+    # unverified and goes to repair; checker downtime never silently passes captions.
     if res.description and left() > config.verify_min_budget_s:
+        verdicts: dict[str, tuple[float, float, str]] = {}
         try:
-            for s, hint in _check(clip, res.captions).items():
-                problems.setdefault(s, hint)
+            verdicts = _check(clip, res.captions, budget_s=max(10.0, left() - 20.0))
         except Exception as exc:  # noqa: BLE001
             print(f"[pipeline] checker failed for {task_id}: {exc}", file=sys.stderr)
+        for s, hint in _verdict_problems(verdicts, req_styles).items():
+            problems.setdefault(s, hint)
+        hard_flagged |= {s for s in verdicts
+                         if verdicts[s][0] < 0.7 or verdicts[s][1] < 0.7}
 
     # Stage 3c: evidence-completeness signal. A severely incomplete graph means every
     # caption was built on weak evidence — flag them all for a frame-grounded rewrite.
@@ -329,16 +404,32 @@ def process_clip(task_id: str, video_url: str, req_styles: list[str],
                ") — re-inspect the frames and describe what you actually see"
         for s in req_styles:
             problems.setdefault(s, note)
+        hard_flagged |= set(req_styles)
 
     # Stage 3d: one visual repair round for every flagged style. Re-showing the frames
     # closes the information bottleneck from the perception summary before accepting a fix.
     if res.description and problems and left() >= 10.0:
-        for s, new in _regenerate(clip, res.description, res.captions,
-                                  problems, res.gaps).items():
-            # Accept the rewrite only if it clears the free lint.
-            if new and S.lint(s, new) is None:
-                res.captions[s] = new
-                res.routes[s] = "regenerated"
+        repaired = {s: new for s, new
+                    in _regenerate(clip, res.description, res.captions, problems,
+                                   res.gaps, budget_s=max(10.0, left() - 5.0)).items()
+                    if new and S.lint(s, new) is None}
+
+        # Post-repair verification: the repair model saw the frames again and may
+        # hallucinate detail the lint cannot catch. When budget allows, Qwen re-scores
+        # the rewrites; a rewrite whose accuracy fails is reverted to the original.
+        post: dict[str, tuple[float, float, str]] = {}
+        if repaired and left() > 15.0:
+            try:
+                post = _check(clip, repaired, budget_s=max(10.0, left() - 5.0))
+            except Exception:  # noqa: BLE001
+                post = {}
+        for s, new in repaired.items():
+            if s in post and post[s][0] < 0.65:
+                continue  # verified regression — keep the original caption
+            if s not in post and s not in hard_flagged:
+                continue  # unverified swap of an unverified caption adds nothing
+            res.captions[s] = new
+            res.routes[s] = "regenerated"
 
     # Final guarantee: every requested style has a non-empty caption.
     for s in req_styles:

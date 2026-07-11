@@ -12,12 +12,18 @@ from typing import Any, Optional
 
 
 def post_json(url: str, payload: dict, headers: Optional[dict] = None,
-              timeout: float = 60.0, retries: int = 2) -> dict[str, Any]:
+              timeout: float = 60.0, retries: int = 2,
+              deadline: Optional[float] = None) -> dict[str, Any]:
     """POST JSON, return the parsed dict. Raises on HTTP/network error.
 
     Short retry (backoff 1s, 3s) on transient errors — including non-JSON replies
     (a proxy/gateway returning an HTML error page). The final attempt raises as-is
     so the caller can fall back.
+
+    `deadline` (time.monotonic() value) hard-bounds the whole call including
+    retries: each attempt's socket timeout shrinks to the remaining budget and no
+    retry starts once the deadline has passed — a hung provider can no longer eat
+    another clip's share of the 10-minute wall clock.
     """
     body = json.dumps(payload).encode("utf-8")
     hdrs = {"Content-Type": "application/json"}
@@ -25,9 +31,15 @@ def post_json(url: str, payload: dict, headers: Optional[dict] = None,
         hdrs.update(headers)
     last_exc: Exception = RuntimeError("unreachable")
     for attempt in range(retries + 1):
+        eff_timeout = timeout
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 2.0:
+                raise last_exc if attempt else TimeoutError("budget exhausted")
+            eff_timeout = min(timeout, remaining)
         try:
             req = urllib.request.Request(url, data=body, headers=hdrs, method="POST")
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(req, timeout=eff_timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, OSError) as exc:
             last_exc = exc

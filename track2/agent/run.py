@@ -11,6 +11,7 @@ Clips are processed in parallel (all stages are network-bound).
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import threading
@@ -90,8 +91,10 @@ def main() -> int:
 
     n = len(tasks)
     workers = min(config.clip_workers, n)
-    # Soft per-clip budget: parallel lanes share the wall clock.
-    budget_s = (config.watchdog_s - 20.0) * workers / n
+    # Soft per-clip budget: clips run in ceil(n/workers) waves; each wave gets an
+    # equal share of the wall clock. (workers/n undercounts when n % workers != 0 —
+    # e.g. 4 clips on 3 workers is TWO waves, not 4/3 of one.)
+    budget_s = (config.watchdog_s - 20.0) / math.ceil(n / workers)
     print(f"[run] {n} clips | workers={workers} | budget={budget_s:.0f}s/clip",
           file=sys.stderr)
 

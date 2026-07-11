@@ -32,7 +32,7 @@ zero* and to *not trust a single model output* transfers directly.
 | `verify.py` (free deterministic checks) | transforms | **style lint** (deterministic, zero-cost): `humorous_non_tech` must contain no tech jargon (blocklist); `humorous_tech` must contain ≥1 tech reference (allowlist); `formal` bans slang/emoji/first person; length bounds for all |
 | `fireworks.py` + `http.py` (OpenAI-compatible client, retries, never-raise) | transfers | same client shape pointed at a vision-capable provider; **cross-provider fallback** replaces local→remote fallback |
 | escalation policy (`ESCALATION_LEVEL`, token caps, tail-to-remote) | **deleted** | no token ranking exists; the only "escalation" is regenerate-with-feedback |
-| `eval/agent_eval.py` (offline judge eval driving the tuning knob) | **transfers ~1:1** | `eval/caption_eval.py` — judge scores each caption on the *exact published rubric* (accuracy 0–1, style 0–1), judge from a **different model family** than the generator (cross-model calibration finding from T1/T3) |
+| `eval/agent_eval.py` (offline judge eval driving the tuning knob) | **transfers ~1:1** | `eval/caption_eval.py` (built) — judge scores each caption on the *exact published rubric* (accuracy 0–1, style 0–1), judge from a **different model family** than the generator (cross-model calibration finding from T1/T3); supports A/B against a baseline results.json. Default judge is the local qwen2.5vl (same model as the checker), so absolute scores are optimistic — use deltas; point `JUDGE_MODEL`/`JUDGE_BASE_URL` at a third family for calibration |
 | Dockerfile (CPU-only slim, self-contained) | transfers | much simpler: no local model, no llama.cpp build — ffmpeg + Python + HTTP clients |
 
 ## 3. Pipeline (new domain logic)
@@ -167,6 +167,13 @@ office 18–30s, concatenated from the official clips): detected `scenes=3`, all
 graph placed both scene transitions within one sampling interval of ground truth —
 but ONLY with per-image timestamp labels interleaved in the message content; with a
 bare header list of timestamps the model shifted events by ~6 s (one whole scene).
+
+Unplanned chaos test: the Radeon instance was recycled by the hosting platform
+mid-session ("Instance service not found"). A full harness run against the dead
+backend finished in 26.7 s with exit 0 and a valid results.json — every style filled
+by the pre-seeded fallback path. The zero-proofing layer holds under total backend
+loss; the operational lesson stands: keep the instance alive during grading and
+restart Ollama after any platform restart.
 
 Open decision: the scoring container's VLM backend — (a) this Radeon instance as a
 self-hosted API (AMD load-bearing narrative; requires the instance alive during grading;

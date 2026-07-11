@@ -8,6 +8,7 @@ twice.
 """
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 from .config import config
@@ -52,7 +53,8 @@ def _fireworks_response_format(json_schema: Optional[dict]) -> Optional[dict]:
     }
 
 
-def _fireworks_chat(payload: dict, json_schema: Optional[dict]) -> Optional[str]:
+def _fireworks_chat(payload: dict, json_schema: Optional[dict],
+                    deadline: Optional[float] = None) -> Optional[str]:
     """Send a generator request to the configured Fireworks Gemma deployment."""
     if not config.has_fireworks_gemma:
         return None
@@ -67,7 +69,7 @@ def _fireworks_chat(payload: dict, json_schema: Optional[dict]) -> Optional[str]
             f"{config.fireworks_base_url.rstrip('/')}/chat/completions",
             fireworks_payload,
             headers={"Authorization": f"Bearer {config.fireworks_api_key}"},
-            timeout=config.request_timeout_s)
+            timeout=config.request_timeout_s, deadline=deadline)
         return _text(data)
     except Exception:  # noqa: BLE001
         return None
@@ -78,8 +80,17 @@ def chat(prompt: str, *, images_b64: Optional[list[str]] = None,
           system: Optional[str] = None, model: Optional[str] = None,
           temperature: float = 0.4, max_tokens: int = 400,
           json_mode: bool = False, json_schema: Optional[dict] = None,
-          allow_fireworks: bool = True, prefer_fireworks: bool = False) -> Optional[str]:
-    """One chat completion against the primary backend, then the fallback. None on failure."""
+          allow_fireworks: bool = True, prefer_fireworks: bool = False,
+          budget_s: Optional[float] = None) -> Optional[str]:
+    """One chat completion against the primary backend, then the fallback. None on failure.
+
+    `budget_s` bounds the WHOLE call (all providers, all retries) so a slow provider
+    cannot spend another stage's share of the clip budget."""
+    deadline = (time.monotonic() + budget_s) if budget_s else None
+
+    def out_of_budget() -> bool:
+        return deadline is not None and deadline - time.monotonic() <= 2.0
+
     payload: dict = {
         "messages": _messages(prompt, images_b64, system, image_labels),
         "temperature": temperature,
@@ -91,8 +102,8 @@ def chat(prompt: str, *, images_b64: Optional[list[str]] = None,
 
     # Verifier-guided repair deliberately asks the stronger remote Gemma to look at
     # the original frames again before the local description loses visual detail.
-    if allow_fireworks and prefer_fireworks:
-        text = _fireworks_chat(payload, json_schema)
+    if allow_fireworks and prefer_fireworks and not out_of_budget():
+        text = _fireworks_chat(payload, json_schema, deadline)
         if text:
             return text
 
@@ -100,20 +111,21 @@ def chat(prompt: str, *, images_b64: Optional[list[str]] = None,
     url = f"{config.vlm_base_url.rstrip('/')}/chat/completions"
     if config.vlm_token:
         url += f"?token={config.vlm_token}"
-    try:
-        data = post_json(url, {**payload, "model": model or config.vlm_model,
-                               "keep_alive": -1},
-                         timeout=config.request_timeout_s)
-        text = (data["choices"][0]["message"]["content"] or "").strip()
-        if text:
-            return text
-    except Exception:  # noqa: BLE001
-        pass
+    if not out_of_budget():
+        try:
+            data = post_json(url, {**payload, "model": model or config.vlm_model,
+                                   "keep_alive": -1},
+                             timeout=config.request_timeout_s, deadline=deadline)
+            text = (data["choices"][0]["message"]["content"] or "").strip()
+            if text:
+                return text
+        except Exception:  # noqa: BLE001
+            pass
 
     # First fallback: an image-capable Gemma deployment on Fireworks. Structured
     # outputs make partial style maps a retriable provider failure, not a silent score loss.
-    if allow_fireworks and not prefer_fireworks:
-        text = _fireworks_chat(payload, json_schema)
+    if allow_fireworks and not prefer_fireworks and not out_of_budget():
+        text = _fireworks_chat(payload, json_schema, deadline)
         if text:
             return text
 
@@ -121,13 +133,13 @@ def chat(prompt: str, *, images_b64: Optional[list[str]] = None,
     # gets a distinct model name so it cannot silently use the caption generator.
     fallback_model = config.fb_model if model is None else config.fb_checker_model
     has_fallback = config.has_fallback if model is None else config.has_checker_fallback
-    if has_fallback:
+    if has_fallback and not out_of_budget():
         try:
             data = post_json(
                 f"{config.fb_base_url.rstrip('/')}/chat/completions",
                 {**payload, "model": fallback_model},
                 headers={"Authorization": f"Bearer {config.fb_api_key}"},
-                timeout=config.request_timeout_s)
+                timeout=config.request_timeout_s, deadline=deadline)
             return _text(data)
         except Exception:  # noqa: BLE001
             pass

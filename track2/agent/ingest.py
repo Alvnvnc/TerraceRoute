@@ -16,15 +16,26 @@ Fireworks request.
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import re
 import subprocess
+import time
+from bisect import bisect_right
 from dataclasses import dataclass, field
 
 from .config import config
 from .http import download
 
 _DURATION = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
+_UNSAFE = re.compile(r"[^A-Za-z0-9._-]")
+
+
+def _safe_stem(task_id: str) -> str:
+    """Filesystem-safe, collision-free work-file stem for an arbitrary task_id.
+    The hash suffix keeps two ids that sanitize identically (or contain ../) apart."""
+    clean = _UNSAFE.sub("_", task_id)[:64].strip("._") or "task"
+    return f"{clean}-{hashlib.sha1(task_id.encode()).hexdigest()[:8]}"
 
 # Thumbnail geometry for the analysis pass (16:9, gray). 1296 bytes per frame —
 # pure-Python differencing over ~100 candidates is instantaneous.
@@ -38,6 +49,7 @@ class Clip:
     duration_s: float = 0.0
     frames_b64: list[str] = field(default_factory=list)   # jpeg, base64
     frame_times: list[float] = field(default_factory=list)  # seconds, same order
+    frame_scenes: list[int] = field(default_factory=list)   # scene id, same order
     sampler: str = "none"      # adaptive | uniform (fallback)
     n_scenes: int = 1          # detected scene segments
     motion: float = 0.0        # mean thumbnail MAD (0-255 scale)
@@ -68,7 +80,7 @@ def _extract_frame(path: str, t: float, out_path: str) -> bool:
 
 # --- Analysis pass -------------------------------------------------------------------
 
-def _thumbnails(path: str, dur: float) -> tuple[list[bytes], float]:
+def _thumbnails(path: str, dur: float, timeout_s: float = 180.0) -> tuple[list[bytes], float]:
     """One decode pass → dense pool of tiny gray thumbnails. Returns (thumbs, fps)."""
     cap = max(8, config.sampler_candidates)
     fps = min(2.0, cap / max(dur, 1.0)) if dur > 0 else 1.0
@@ -76,7 +88,7 @@ def _thumbnails(path: str, dur: float) -> tuple[list[bytes], float]:
         [config.ffmpeg_bin, "-loglevel", "error", "-i", path,
          "-vf", f"fps={fps:.4f},scale={_TW}:{_TH}", "-pix_fmt", "gray",
          "-f", "rawvideo", "-"],
-        capture_output=True, timeout=180)
+        capture_output=True, timeout=max(10.0, timeout_s))
     raw = proc.stdout
     fsz = _TW * _TH
     thumbs = [raw[i * fsz:(i + 1) * fsz] for i in range(len(raw) // fsz)]
@@ -139,11 +151,12 @@ def _pick_indices(diffs: list[float], cuts: list[int], n_cand: int,
 
 
 def _plan_samples(thumbs: list[bytes], fps: float,
-                  max_frames: int) -> tuple[list[float], int, float]:
-    """Adaptive plan: (timestamps, n_scenes, motion). Empty list → caller falls back."""
+                  max_frames: int) -> tuple[list[float], list[int], int, float]:
+    """Adaptive plan: (timestamps, scene id per timestamp, n_scenes, motion).
+    Empty timestamps → caller falls back to uniform sampling."""
     n = len(thumbs)
     if n < 4:
-        return [], 1, 0.0
+        return [], [], 1, 0.0
     diffs = [_mad(thumbs[i - 1], thumbs[i]) for i in range(1, n)]
     cuts = _scene_cuts(diffs)
     motion = sum(diffs) / len(diffs)
@@ -168,33 +181,46 @@ def _plan_samples(thumbs: list[bytes], fps: float,
             kept.append(idx)
     if len(kept) < 3:  # degenerate (still tripod shot): keep sparse uniform anchors
         kept = sorted(set([0, n // 2, n - 1]))
-    return [i / fps for i in kept], len(cuts) + 1, motion
+    scene_ids = [bisect_right(cuts, i) for i in kept]
+    return [i / fps for i in kept], scene_ids, len(cuts) + 1, motion
 
 
 # --- Ingest --------------------------------------------------------------------------
 
-def ingest(task_id: str, video_url: str, max_frames: int = 0) -> Clip:
+def ingest(task_id: str, video_url: str, max_frames: int = 0,
+           budget_s: float = 0.0) -> Clip:
     """Download the clip and sample frames adaptively. Never raises.
 
     A partially successful ingest (fewer frames, even a single one) is still usable:
-    one frame of evidence beats a blank caption.
+    one frame of evidence beats a blank caption. `budget_s` (0 = unbounded) soft-bounds
+    the whole ingest: download and analysis timeouts shrink to the remaining budget and
+    frame extraction stops early rather than overrun the clip's share of the wall clock.
     """
     clip = Clip(task_id=task_id)
     cap = max_frames or config.max_frames
+    deadline = (time.monotonic() + budget_s) if budget_s > 0 else None
+
+    def remaining(default: float) -> float:
+        return default if deadline is None else min(default, deadline - time.monotonic())
+
     os.makedirs(config.work_dir, exist_ok=True)
-    path = os.path.join(config.work_dir, f"{task_id}.mp4")
+    stem = _safe_stem(task_id)
+    path = os.path.join(config.work_dir, f"{stem}.mp4")
     try:
-        if not download(video_url, path, timeout=config.download_timeout_s):
+        if not download(video_url, path,
+                        timeout=max(5.0, remaining(config.download_timeout_s))):
             return clip
         clip.path = path
         clip.duration_s = _probe_duration(path)
         dur = clip.duration_s
 
         times: list[float] = []
+        scenes: list[int] = []
         try:
-            thumbs, fps = _thumbnails(path, dur)
-            times, clip.n_scenes, clip.motion = _plan_samples(thumbs, fps, cap)
-            clip.sampler = "adaptive"
+            if remaining(180.0) > 10.0:
+                thumbs, fps = _thumbnails(path, dur, timeout_s=remaining(180.0))
+                times, scenes, clip.n_scenes, clip.motion = _plan_samples(thumbs, fps, cap)
+                clip.sampler = "adaptive"
         except Exception:  # noqa: BLE001 — analysis is an optimization, not a need
             times = []
         if not times:
@@ -202,15 +228,19 @@ def ingest(task_id: str, video_url: str, max_frames: int = 0) -> Clip:
             n = min(config.frames, cap)
             times = ([dur * (i + 0.5) / n for i in range(n)] if dur > 0
                      else [0.5, 2.0, 5.0, 10.0])
+            scenes = [0] * len(times)
             clip.sampler = "uniform"
 
         for i, t in enumerate(times):
-            fp = os.path.join(config.work_dir, f"{task_id}_{i}.jpg")
+            if deadline is not None and deadline - time.monotonic() < 3.0:
+                break  # partial frame set still beats a blank caption
+            fp = os.path.join(config.work_dir, f"{stem}_{i}.jpg")
             try:
                 if _extract_frame(path, t, fp):
                     with open(fp, "rb") as f:
                         clip.frames_b64.append(base64.b64encode(f.read()).decode())
                     clip.frame_times.append(t)
+                    clip.frame_scenes.append(scenes[i] if i < len(scenes) else 0)
                     os.remove(fp)
             except Exception:  # noqa: BLE001
                 continue
@@ -238,3 +268,5 @@ def _enforce_payload_caps(clip: Clip) -> None:
                 for i in range(1, len(clip.frame_times) - 1)]
         drop = 1 + min(range(len(gaps)), key=gaps.__getitem__) if gaps else 1
         del clip.frames_b64[drop], clip.frame_times[drop]
+        if drop < len(clip.frame_scenes):
+            del clip.frame_scenes[drop]
