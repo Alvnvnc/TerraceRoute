@@ -1,0 +1,5 @@
+# Unified TerraceRoute image. Track 2 uses the standard library; ffmpeg is installed
+# by the Dockerfile. These dependencies provide Track 1's local llama.cpp runtime.
+llama-cpp-python==0.3.2
+numpy<2
+huggingface_hub==0.25.2

@@ -1,0 +1,15 @@
+.git
+.gitignore
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.*
+track1/eval
+track1/tests
+track1/docs
+track1/chat_app.py
+track1/Dockerfile*
+track2/eval
+track2/plan.md
+track3
+tests

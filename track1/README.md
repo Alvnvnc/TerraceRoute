@@ -115,7 +115,7 @@ INPUT_PATH=eval/practice_tasks.json OUTPUT_PATH=/tmp/results.json \
 ```bash
 docker build -t terraceroute:latest .
 docker run --rm --cpus=2 --memory=4g --network none \
-  -v "$PWD/eval":/input:ro -v /tmp/out:/output \
+  -v "$PWD/eval/practice_tasks.json":/input/tasks.json:ro -v /tmp/out:/output \
   terraceroute:latest        # zero-API run, offline
 ```
 

@@ -54,4 +54,8 @@ COPY agent/ /app/agent/
 # Warm-up: fail fast at BUILD time if the model cannot load (rather than at scoring time).
 RUN python -c "from llama_cpp import Llama; Llama(model_path='/models/local.gguf', n_ctx=512, n_threads=2, verbose=False); print('warm-up OK')"
 
+# Declared last so leaderboard walk-down variants (L0/L2/L3) share every heavy layer above.
+ARG ESCALATION_LEVEL=0
+ENV ESCALATION_LEVEL=${ESCALATION_LEVEL}
+
 ENTRYPOINT ["python", "-m", "agent.run"]

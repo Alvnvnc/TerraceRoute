@@ -63,6 +63,14 @@ class FireworksRoutingTest(unittest.TestCase):
         self.assertIsNone(text)
         self.assertEqual(post.call_count, 1)
 
+    def test_warmup_does_not_load_the_same_model_twice(self) -> None:
+        with patch.object(config, "checker_model", config.vlm_model), patch(
+            "agent.vlm.chat"
+        ) as chat:
+            vlm.warm_up()
+
+        chat.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

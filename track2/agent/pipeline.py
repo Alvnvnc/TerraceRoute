@@ -8,7 +8,7 @@ share the same visual facts.
 Confidence never comes from the generator's self-assessment. Three independent
 signals decide whether a caption is accepted or repaired:
   (a) deterministic style lint (free),
-  (b) the cross-family Qwen checker scoring against the original frames,
+  (b) a visual checker scoring against the original frames,
   (c) deterministic incompleteness of the evidence graph itself (empty timeline,
       missing entities, pile of uncertainties).
 The caption is checked against evidence, never against itself — Track 1's
@@ -249,7 +249,7 @@ def _checker_frame_idx(clip: Clip, k: int) -> list[int]:
 
 def _check(clip: Clip, captions: dict[str, str],
            budget_s: float = 0.0) -> dict[str, tuple[float, float, str]]:
-    """Cross-family checker (qwen2.5vl vs gemma3): score each caption on the judge's own
+    """Visual checker: score each caption on the judge's own
     rubric, grounded in the actual frames. Returns style -> (accuracy, style_match, hint)
     for VALIDLY SCORED styles only — a style the checker failed to score is missing from
     the result, and the caller treats it as unverified (fail-closed), never as passed."""
@@ -383,7 +383,7 @@ def process_clip(task_id: str, video_url: str, req_styles: list[str],
             problems[s] = p
     hard_flagged = set(problems)  # styles with a concrete, deterministic defect
 
-    # Stage 3b: cross-family checker — only when the budget allows (degradation
+    # Stage 3b: visual checker — only when the budget allows (degradation
     # ladder). FAIL-CLOSED: a style the checker did not validly score counts as
     # unverified and goes to repair; checker downtime never silently passes captions.
     if res.description and left() > config.verify_min_budget_s:

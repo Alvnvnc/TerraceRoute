@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Build and publish the standalone Track 1 scoring image.
+# Build and publish the standalone Track 2 scoring image.
 set -euo pipefail
 
-TAG="${1:-track1-v1}"
+TAG="${1:-track2-v1}"
 REGISTRY="${REGISTRY:-ghcr.io/alvnvnc}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -23,4 +23,4 @@ else
 fi
 
 echo "PUSHED: $IMAGE"
-echo "Track 1 submission reference: $IMAGE"
+echo "Track 2 submission reference: $IMAGE"

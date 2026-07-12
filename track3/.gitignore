@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 artifacts/*
 !artifacts/.gitkeep
+
+# Slide-template source (design reference only — not a deliverable)
+*.zip
+
+# Live-demo tunnel token (secret)
+.amd_token

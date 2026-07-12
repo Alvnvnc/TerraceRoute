@@ -26,7 +26,8 @@ def post_json(url: str, payload: dict, headers: Optional[dict] = None,
     another clip's share of the 10-minute wall clock.
     """
     body = json.dumps(payload).encode("utf-8")
-    hdrs = {"Content-Type": "application/json"}
+    # Cloudflare may reject Python's default urllib signature (edge code 1010).
+    hdrs = {"Content-Type": "application/json", "User-Agent": "TerraceRoute/1.0"}
     if headers:
         hdrs.update(headers)
     last_exc: Exception = RuntimeError("unreachable")

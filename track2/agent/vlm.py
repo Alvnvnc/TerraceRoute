@@ -1,10 +1,9 @@
-"""OpenAI-compatible chat client for the self-hosted Radeon backend (+ fallbacks).
+"""OpenAI-compatible chat client for the self-hosted vision backend (+ fallbacks).
 
 Same shape as Track 1's fireworks.py: bounded retries, never raises, the caller always
 gets None on failure and falls back. Fireworks is reserved for generator calls so a
-Gemma fallback never grades its own captions. keep_alive=-1 pins the primary models in
-VRAM (48GB W7900 holds generator + checker together) so no call pays model-load latency
-twice.
+Gemma fallback never grades its own captions. keep_alive=-1 keeps the primary model
+resident so repeated stages do not pay model-load latency.
 """
 from __future__ import annotations
 
@@ -100,7 +99,7 @@ def chat(prompt: str, *, images_b64: Optional[list[str]] = None,
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
 
-    # Verifier-guided repair deliberately asks the stronger remote Gemma to look at
+    # Verifier-guided repair deliberately asks the remote Gemma to look at
     # the original frames again before the local description loses visual detail.
     if allow_fireworks and prefer_fireworks and not out_of_budget():
         text = _fireworks_chat(payload, json_schema, deadline)
@@ -147,13 +146,14 @@ def chat(prompt: str, *, images_b64: Optional[list[str]] = None,
 
 
 def warm_up() -> None:
-    """Load generator + checker into VRAM before the first real task (fire-and-forget)."""
+    """Load the configured generator/checker into VRAM before real work."""
     try:
         chat("Reply with OK.", model=config.vlm_model, max_tokens=4, temperature=0.0)
     except Exception:  # noqa: BLE001
         pass
-    try:
-        chat("Reply with OK.", model=config.checker_model, max_tokens=4,
-             temperature=0.0, allow_fireworks=False)
-    except Exception:  # noqa: BLE001
-        pass
+    if config.checker_model != config.vlm_model:
+        try:
+            chat("Reply with OK.", model=config.checker_model, max_tokens=4,
+                 temperature=0.0, allow_fireworks=False)
+        except Exception:  # noqa: BLE001
+            pass

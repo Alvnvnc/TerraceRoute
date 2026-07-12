@@ -1,9 +1,8 @@
-"""Runtime configuration — env-first with self-hosted defaults.
+"""Runtime configuration with restricted self-hosted defaults.
 
-Track 2 injects no credentials. Primary backend = our Ollama server on an AMD
-Radeon PRO W7900 (gfx1100). A Fireworks Gemma vision deployment can take over
-generator calls when that backend is unavailable; the independent checker never
-falls back to the generator model.
+Track 2 injects no credentials. A Fireworks Gemma vision deployment can take over
+generator calls when the primary backend is unavailable; checker calls never use
+that generator fallback.
 """
 from __future__ import annotations
 
@@ -36,16 +35,14 @@ class Config:
     output_path: str = field(default_factory=lambda: _env("OUTPUT_PATH", "/output/results.json"))
     work_dir: str = field(default_factory=lambda: _env("WORK_DIR", "/tmp/clips"))
 
-    # --- Primary backend: self-hosted Ollama on AMD Radeon (OpenAI-compatible) ---
-    # The token rides as a query parameter (jupyter-server-proxy convention).
+    # --- Primary backend: restricted self-hosted Ollama proxy (OpenAI-compatible) ---
+    # The token rides as a query parameter on the restricted public VLM proxy.
     vlm_base_url: str = field(default_factory=lambda: _env(
         "VLM_BASE_URL",
-        "https://radeon-global.anruicloud.com/instances/hf-321-ee2a015c/proxy/11434/v1"))
-    vlm_token: str = field(default_factory=lambda: _env("VLM_TOKEN", "amd-oneclick"))
+        "https://amd.alvnvnc.site/v1"))
+    vlm_token: str = field(default_factory=lambda: _env("VLM_TOKEN", "terraceroute-track2-v1"))
     vlm_model: str = field(default_factory=lambda: _env("VLM_MODEL", "gemma3:12b"))
-    # Different model FAMILY on purpose: the checker must not share the generator's
-    # blind spots (cross-model calibration finding, see plan.md §7).
-    checker_model: str = field(default_factory=lambda: _env("CHECKER_MODEL", "qwen2.5vl:7b"))
+    checker_model: str = field(default_factory=lambda: _env("CHECKER_MODEL", "gemma3:12b"))
 
     # --- Fireworks Gemma vision fallback ---
     # FIREWORKS_GEMMA_MODEL must be an image-capable on-demand deployment ID, not a

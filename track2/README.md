@@ -4,11 +4,10 @@ An agent that watches a video clip and captions it in four styles (`formal`,
 `sarcastic`, `humorous_tech`, `humorous_non_tech`), scored by an LLM-judge on
 **caption accuracy** and **style match**.
 
-Same thesis as our Track 1 and Track 3 entries: *never trust a single model's
-unverified output.* Captions are generated from extracted visual evidence, then
-verified against that evidence by a **different model family**, and regenerated when
-they fail. Inference runs on a self-hosted **AMD Radeon PRO W7900 (gfx1100, 48 GB)**
-serving `gemma3:12b` (generator, vision) and `qwen2.5vl:7b` (checker, vision).
+Captions are generated from extracted visual evidence, checked against the sampled
+frames, and regenerated when they fail. The default backend uses a restricted public
+proxy to a self-hosted `gemma3:12b` vision model; all backend settings remain overridable
+through the runtime environment.
 
 ## Pipeline
 
@@ -26,7 +25,7 @@ stylize   ONE structured JSON call from that one graph → all requested styles 
 verify    confidence never comes from the generator's self-assessment:
           (a) free deterministic style lint (jargon blocklist for humorous_non_tech,
               tech-reference requirement for humorous_tech, formality rules)
-          (b) cross-family checker: qwen2.5vl:7b re-scores each caption against the
+          (b) visual checker re-scores each caption against the
               actual frames on the judge's own rubric (accuracy + style match)
           (c) deterministic evidence-graph gaps (empty timeline / no entities flag
               every style; many uncertainties ride along as repair context)
@@ -48,6 +47,14 @@ clips (details in `plan.md` §7).
 
 ## Run
 
+Track 2 is published independently from Track 1. The submission reference has this form:
+
+```text
+ghcr.io/alvnvnc/terraceroute:track2-<immutable-version>
+```
+
+Build the Track 2 component from this directory for local development:
+
 ```bash
 docker build -t track2-captioner .
 docker run --rm \
@@ -55,12 +62,19 @@ docker run --rm \
   track2-captioner
 ```
 
+From the repository root, publish a public `linux/amd64` image with:
+
+```bash
+REGISTRY=ghcr.io/alvnvnc ./scripts/build_and_push.sh 2 track2-v2
+```
+
 I/O per the harness spec: reads `/input/tasks.json`
 (`[{task_id, video_url, styles:[...]}]`), writes `/output/results.json`
 (`[{task_id, captions:{style: text}}]`).
 
-Backend configuration (all optional, defaults target our Radeon instance):
-`VLM_BASE_URL`, `VLM_TOKEN`, `VLM_MODEL`, and `CHECKER_MODEL`.
+Backend configuration (all optional, defaults target the restricted self-hosted proxy):
+`VLM_BASE_URL`, `VLM_TOKEN`, `VLM_MODEL`, and `CHECKER_MODEL`. The default public
+proxy only permits the pinned submission model and caps request size/output tokens.
 
 ### Fireworks Gemma fallback
 
@@ -68,9 +82,9 @@ The Track 1 `FIREWORKS_API_KEY` can be supplied to Track 2 at runtime; it is nev
 copied into the image. Create an image-capable Gemma on-demand deployment in Fireworks,
 then set its deployment ID as `FIREWORKS_GEMMA_MODEL` (for example,
 `accounts/<account>/deployments/<deployment>`). The agent uses it as a fallback if the
-local Gemma generator is unavailable and preferentially for a frame-grounded repair after
-the Qwen checker flags a caption. It never routes the Qwen visual checker to that model,
-so caption verification remains cross-family.
+default generator is unavailable and preferentially for a frame-grounded repair after
+the visual checker flags a caption. Checker calls never use the Fireworks generator
+fallback, so a failed checker cannot silently approve its own generated caption.
 
 ```bash
 docker run --rm --env-file ../track1/.env \
